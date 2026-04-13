@@ -1,26 +1,104 @@
 @import "tailwindcss";
 
+/* Typography Imports */
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Fira+Code:wght@300..700&family=Unbounded:wght@200..900&display=swap');
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --void: #06070a;
+  --ink: #0e1016;
+  --glass-surface: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.09);
+  --neon-lime: #c8ff00;
+  --electric-blue: #0af0ff;
+  --magenta: #ff2dff;
+  --warm-white: #f0ede8;
+  --ink-border: #1a1d28;
+  --strk-gold: #ffd24d;
+  
+  --background: var(--void);
+  --foreground: var(--warm-white);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-neon-lime: var(--neon-lime);
+  --color-electric-blue: var(--electric-blue);
+  --color-magenta: var(--magenta);
+  --color-ink: var(--ink);
+  --color-void: var(--void);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--void);
+  color: var(--warm-white);
+  font-family: 'DM Mono', monospace;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+/* Typography Hierarchy */
+h1, h2, h3, .font-bebas {
+  font-family: 'Bebas Neue', sans-serif;
+  text-transform: uppercase;
+}
+
+.font-mono-strict {
+  font-family: 'Fira Code', monospace;
+}
+
+.font-unbounded {
+  font-family: 'Unbounded', sans-serif;
+}
+
+/* Animations */
+@keyframes antiGravityIn {
+  0%   { opacity: 0; transform: translateY(-28px) rotateX(8deg); filter: blur(6px); }
+  60%  { opacity: 1; transform: translateY(4px) rotateX(-1deg); filter: blur(0); }
+  100% { opacity: 1; transform: translateY(0) rotateX(0); }
+}
+
+@keyframes scanLine {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+@keyframes dotFlicker {
+  0% { opacity: 0.2; background: var(--ink-border); }
+  100% { opacity: 1; background: var(--neon-lime); box-shadow: 0 0 10px var(--neon-lime); }
+}
+
+@keyframes pulseRing {
+  0% { transform: scale(1); opacity: 0.5; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes errorFlicker {
+  0% { opacity: 1; transform: translateX(0); }
+  5% { opacity: 0.7; transform: translateX(-1px); }
+  10% { opacity: 1; transform: translateX(1px); }
+  15% { opacity: 0.8; transform: translateX(-2px); }
+  20% { opacity: 1; transform: translateX(0); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+.animate-anti-gravity {
+  animation: antiGravityIn 0.8s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+.animate-error {
+  animation: errorFlicker 3s ease-in-out infinite;
+}
+
+.animate-scan {
+  animation: scanLine 800ms linear infinite;
+}
+
+/* 3D Container */
+.perspective-container {
+  perspective: 1200px;
 }
