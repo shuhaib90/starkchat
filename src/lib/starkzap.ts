@@ -52,12 +52,7 @@ export async function executeStarknetPayment(
         recipient: receiver,
         amount: amountUint256
       })
-    }, {
-      // Set tip to 0 and explicitly provide cairoVersion to bypass resolveDetailsWithTip
-      // and getCairoVersion which often fail on public RPCs due to rate limiting.
-      tip: 0,
-      cairoVersion: "1"
-    } as any);
+    });
     
     console.log("[Starkzap] Transaction submitted:", response.transaction_hash);
     

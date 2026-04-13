@@ -19,7 +19,7 @@ interface ChatWindowProps {
 }
 
 export function ChatWindow({ receiverAddress }: ChatWindowProps) {
-  const { address } = useWallet();
+  const { address, showDiagnostic } = useWallet();
   const [messages, setMessages] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -113,6 +113,7 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
       setMessages(data);
     } else if (error) {
       console.error("Fetch messages error:", error);
+      showDiagnostic("Database connection error. Try refreshing.", "error");
     }
     setIsLoading(false);
   };
@@ -142,7 +143,10 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
         is_read: false
       },
     ]);
-    if (error) console.error("Error sending message:", error);
+    if (error) {
+      console.error("Error sending message:", error);
+      showDiagnostic("Signal failed to transmit to database.", "error");
+    }
   };
 
   const renderedMessages = useMemo(() => {

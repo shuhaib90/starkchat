@@ -57,7 +57,10 @@ export function SendMoneyModal({ isOpen, onClose, receiverAddress }: SendMoneyMo
         .select()
         .single();
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        showDiagnostic("Failed to prepare transaction signal.", "error");
+        throw insertError;
+      }
       messageId = message.id;
 
       // Execute transaction logic using common helper
