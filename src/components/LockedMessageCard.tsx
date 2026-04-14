@@ -16,6 +16,7 @@ interface LockedMessageCardProps {
     receiver_address: string;
     encrypted_content: string;
     unlock_price: number;
+    token?: string;
     is_unlocked: boolean;
     status: string;
     tx_hash?: string;
