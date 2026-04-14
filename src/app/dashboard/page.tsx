@@ -34,7 +34,7 @@ interface Transaction {
 }
 
 export default function DashboardPage() {
-  const { address, isConnected } = useWallet();
+  const { address } = useWallet();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -101,7 +101,7 @@ export default function DashboardPage() {
     fetchStats();
   }, [address]);
 
-  if (!isConnected) {
+  if (!address) {
     return (
       <div className="min-h-screen bg-[#06070a] flex items-center justify-center p-6">
         <div className="text-center space-y-8 animate-anti-gravity">
