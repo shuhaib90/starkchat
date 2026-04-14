@@ -89,73 +89,47 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
 
     markMessagesAsRead();
 
-    // [HIGH-PERFORMANCE ENGINE] Consolidated Database Stream
-    const me = normalizeAddress(address);
-    const them = normalizeAddress(receiverAddress);
-    // Stable pairing for the channel name
-    const participants = [me, them].sort((a, b) => a.localeCompare(b));
-    const sharedTopic = `chat:${participants.join("-").slice(0, 100)}`; 
-
+    // [BLUEPRINT SYNC] Standard Realtime Subscription
     const channel = supabase
-      .channel(sharedTopic)
+      .channel('messages-realtime')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'messages' },
-        (payload: any) => {
-          const rawMsg = payload.new || payload.old;
-          if (!rawMsg) return;
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+        },
+        (payload) => {
+          const newMsg = payload.new;
+          if (!newMsg) return;
 
-          const msg = {
-            ...rawMsg,
-            sender_address: normalizeAddress(rawMsg.sender_address),
-            receiver_address: normalizeAddress(rawMsg.receiver_address)
-          };
+          const me = normalizeAddress(address);
+          const them = normalizeAddress(receiverAddress);
+          
+          const s = normalizeAddress(newMsg.sender_address);
+          const r = normalizeAddress(newMsg.receiver_address);
 
-          const s = msg.sender_address;
-          const r = msg.receiver_address;
-
-          // Unified relevance check
+          // Standard filter: is this message for this active chat?
           const isRelevant = (s === me && r === them) || (s === them && r === me);
-          if (!isRelevant) return;
-
-          console.log(`[Sync Engine] Received ${payload.eventType} event:`, msg.id);
-
-          if (payload.eventType === 'INSERT') {
+          
+          if (isRelevant) {
+            console.log("[Blueprint Sync] New message received:", newMsg.id);
             setMessages((prev) => {
-              // De-duplicate in case of local-optimistic vs remote-sync
-              if (prev.some(m => m.id === msg.id)) return prev;
-              return [...prev, msg].sort((a, b) => 
+              if (prev.some(m => m.id === newMsg.id)) return prev;
+              const sorted = [...prev, newMsg].sort((a, b) => 
                 new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
               );
+              return sorted;
             });
             if (s === them) markMessagesAsRead();
-          } else if (payload.eventType === 'UPDATE') {
-            setMessages((prev) => prev.map(m => m.id === msg.id ? msg : m));
           }
         }
       )
-      .on('broadcast', { event: 'new_message' }, ({ payload }) => {
-        // Broadcast acts as a sub-50ms booster while DB replicates
-        const msg = {
-          ...payload,
-          sender_address: normalizeAddress(payload.sender_address),
-          receiver_address: normalizeAddress(payload.receiver_address)
-        };
-        if (msg.sender_address === me) return; // Ignore our own echo
-
-        setMessages((prev) => {
-          if (prev.some(m => m.id === msg.id)) return prev;
-          console.log("[Sync Engine] Broadcast Boost received!");
-          return [...prev, msg].sort((a, b) => 
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-          );
-        });
-      })
       .subscribe((status, err) => {
         setRealtimeStatus(status.toUpperCase());
-        setActiveChannelId(sharedTopic);
+        setActiveChannelId('messages-realtime');
         if (err) {
-          console.error(`[Sync Engine] Error:`, err.message);
+          console.error("[Blueprint Sync] Error:", err.message);
           setRealtimeStatus(`ERROR: ${err.message}`);
         }
       });

@@ -63,39 +63,29 @@ export function RecentChats() {
 
     fetchPreviews();
 
-    // Subscribe to realtime updates for inbox (Postgres + Global Pulse Broadcast)
-    const normalizedMe = normalizeAddress(address);
+    // [BLUEPRINT SYNC] Standard Realtime Subscription
     const channel = supabase
-      .channel(`inbox:${normalizedMe}`)
+      .channel('messages-realtime')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'messages' },
+        { event: 'INSERT', schema: 'public', table: 'messages' },
         (payload: any) => {
-          const rawMsg = payload.new || payload.old;
-          if (!rawMsg) return;
+          const newMsg = payload.new;
+          if (!newMsg) return;
 
-          const msg = {
-            ...rawMsg,
-            sender_address: normalizeAddress(rawMsg.sender_address),
-            receiver_address: normalizeAddress(rawMsg.receiver_address)
-          };
-
-          const s = normalizeAddress(msg.sender_address);
-          const r = normalizeAddress(msg.receiver_address);
           const me = normalizeAddress(address);
+          const s = normalizeAddress(newMsg.sender_address);
+          const r = normalizeAddress(newMsg.receiver_address);
 
+          // If I am involved in this message, refresh the inbox
           if (s === me || r === me) {
-             console.log("[Global Pulse: DB] Inbox re-fetch triggered");
+             console.log("[Blueprint Sync] Inbox pulse detected, refreshing...");
              fetchPreviews(); 
           }
         }
       )
-      .on('broadcast', { event: 'inbox_update' }, ({ payload }) => {
-        console.log("[Global Pulse: Broadcast] Instant inbox update received", payload.id);
-        fetchPreviews(); // Re-fetch all to ensure correct ordering and status
-      })
       .subscribe((status) => {
-        console.log(`[Global Pulse Status] ${status} for user channel`);
+        console.log(`[Blueprint Sync] Inbox Status: ${status}`);
       });
 
     return () => {
