@@ -41,7 +41,7 @@ export default function Home() {
           >
             <div className="w-10 h-10 rounded-full border-2 border-[#c8ff00]/40 overflow-hidden shadow-[0_0_15px_rgba(200,255,0,0.2)] group-hover:border-[#c8ff00] transition-all bg-[#0e1016]">
               <Image 
-                src="/zenvic.png" 
+                src="/zenvic_brand.png" 
                 alt="Zenvic" 
                 width={40} 
                 height={40} 
