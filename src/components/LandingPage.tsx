@@ -167,24 +167,35 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
         </a>
       </section>
       
-      <div className="mt-20 flex flex-col items-center gap-4 opacity-40 hover:opacity-100 transition-opacity duration-500">
-        <a 
-          href="https://x.com/zenvic00" 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          className="group flex flex-col items-center gap-3"
-        >
-          <div className="w-12 h-12 rounded-full border-2 border-white/10 group-hover:border-[#c8ff00] transition-all overflow-hidden shadow-2xl bg-[#0e1016]">
-            <Image 
-              src="/zenvic.png" 
-              alt="Zenvic" 
-              width={48} 
-              height={48} 
-              className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" 
-            />
-          </div>
-          <span className="font-unbounded text-[10px] tracking-[6px] uppercase group-hover:text-[#c8ff00] transition-colors">Built by Zenvic</span>
-        </a>
+      <div className="mt-20 flex flex-col items-center gap-8 opacity-40 hover:opacity-100 transition-opacity duration-500">
+        <div className="flex flex-col sm:flex-row items-center gap-12">
+          <a 
+            href="https://x.com/zenvic00" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="group flex flex-col items-center gap-3"
+          >
+            <div className="w-12 h-12 rounded-full border-2 border-white/10 group-hover:border-[#c8ff00] transition-all overflow-hidden shadow-2xl bg-[#0e1016]">
+              <Image 
+                src="/zenvic.png" 
+                alt="Zenvic" 
+                width={48} 
+                height={48} 
+                className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" 
+              />
+            </div>
+            <span className="font-unbounded text-[10px] tracking-[6px] uppercase group-hover:text-[#c8ff00] transition-colors">Built by Zenvic</span>
+          </a>
+
+          <div className="hidden sm:block w-[1px] h-12 bg-white/10" />
+
+          <Link href="/dashboard" className="group flex flex-col items-center gap-3">
+            <div className="w-12 h-12 flex items-center justify-center bg-white/5 border-2 border-white/10 group-hover:border-[#0af0ff] group-hover:bg-[#0af0ff]/10 transition-all shadow-2xl rounded-sm">
+              <BarChart3 className="w-6 h-6 text-white/40 group-hover:text-[#0af0ff] transition-colors" />
+            </div>
+            <span className="font-unbounded text-[10px] tracking-[6px] uppercase group-hover:text-[#0af0ff] transition-colors text-white/40">Control Center</span>
+          </Link>
+        </div>
       </div>
     </div>
   );

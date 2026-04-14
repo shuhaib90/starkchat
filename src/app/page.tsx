@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ConnectWalletButton } from "@/components/ConnectWalletButton";
-import { Zap, MessageSquare, ArrowRight, Terminal } from "lucide-react";
+import Link from "next/link";
+import { Zap, MessageSquare, ArrowRight, Terminal, BarChart3 } from "lucide-react";
 import Image from "next/image";
 import { useWallet } from "@/components/StarkzapProvider";
 import { RecentChats } from "@/components/RecentChats";
 import { LandingPage } from "@/components/LandingPage";
+import { ConnectWalletButton } from "@/components/ConnectWalletButton";
 
 export default function Home() {
   const [targetAddress, setTargetAddress] = useState("");
@@ -79,7 +80,18 @@ export default function Home() {
           </button>
         </div>
         
-        <ConnectWalletButton />
+        <div className="flex items-center gap-4">
+          {address && (
+            <Link 
+              href="/dashboard"
+              className="hidden md:flex items-center gap-3 px-4 py-2 bg-white/5 border border-white/10 hover:border-[#0af0ff] hover:bg-[#0af0ff]/5 transition-all group"
+            >
+              <BarChart3 className="w-4 h-4 text-[#0af0ff]/60 group-hover:text-[#0af0ff]" />
+              <span className="font-bebas text-sm tracking-widest text-[#0af0ff]/60 group-hover:text-[#0af0ff]">Data_Hub</span>
+            </Link>
+          )}
+          <ConnectWalletButton />
+        </div>
       </header>
 
       {/* Main Content */}
