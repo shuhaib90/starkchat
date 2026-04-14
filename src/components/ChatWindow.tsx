@@ -67,8 +67,8 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
           if (payload.eventType === 'INSERT') {
             setMessages((prev) => {
               // Prevent duplicate messages if optimistic update already added it
-              if (prev.some(m => m.id === payload.new.id)) return prev;
-              return [...prev, payload.new];
+              if (prev.some(m => m.id === msg.id)) return prev;
+              return [...prev, msg];
             });
             // Mark new incoming messages from them as read instantly
             if (s === them) {

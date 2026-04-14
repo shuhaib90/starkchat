@@ -70,8 +70,14 @@ export function RecentChats() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'messages' },
         (payload: any) => {
-          const msg = payload.new || payload.old;
-          if (!msg || !msg.sender_address || !msg.receiver_address) return;
+          const rawMsg = payload.new || payload.old;
+          if (!rawMsg) return;
+
+          const msg = {
+            ...rawMsg,
+            sender_address: normalizeAddress(rawMsg.sender_address),
+            receiver_address: normalizeAddress(rawMsg.receiver_address)
+          };
 
           const s = normalizeAddress(msg.sender_address);
           const r = normalizeAddress(msg.receiver_address);
