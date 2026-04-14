@@ -16,9 +16,9 @@ interface LockedMessageCardProps {
     receiver_address: string;
     encrypted_content: string;
     unlock_price: number;
-    token?: string;
     is_unlocked: boolean;
     status: string;
+    tx_hash?: string;
     created_at: string;
   };
   onDelete?: (id: string) => void;
@@ -132,8 +132,26 @@ export const LockedMessageCard = React.memo(function LockedMessageCard({ message
   return (
     <div className={`flex w-full mb-8 ${isMe ? "justify-end" : "justify-start"} transform-gpu`}>
       <div className={`flex flex-col group w-full max-w-[85%] sm:max-w-[70%] ${isMe ? "items-end" : "items-start"}`}>
-        <div className="flex items-center justify-between gap-3 mb-2 px-1 w-full">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-4 mb-4 w-full">
+          <div className="flex flex-col">
+            <span className="font-bebas text-3xl text-magenta tracking-widest">{message.unlock_price} <span className="opacity-40">{tokenSymbol}</span></span>
+            <span className="font-['DM_Mono'] text-[9px] text-white/30 uppercase tracking-[2px] mt-1">
+              {shouldShowContent ? 'Payment Verified ON-CHAIN' : 'ENCRYPTED SIGNAL PAYLOAD'}
+            </span>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {message.tx_hash && (
+              <a 
+                href={`https://starkscan.co/tx/${message.tx_hash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-1.5 border border-white/10 hover:border-[#0af0ff]/30 rounded-md transition-all group/link bg-white/[0.03]"
+                title="View on Explorer"
+              >
+                <Terminal className="w-3.5 h-3.5 text-white/40 group-hover/link:text-[#0af0ff]" />
+              </a>
+            )}
             <span className="font-bebas text-[10px] text-magenta tracking-[3px] uppercase">
               {shouldShowContent 
                 ? (isMe ? "AMOUNT RECEIVED" : "SIGNAL DECRYPTED") 

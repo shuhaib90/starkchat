@@ -18,6 +18,7 @@ interface RequestMessageCardProps {
     amount: number;
     token: string;
     status: string;
+    tx_hash?: string;
     created_at: string;
   };
   onDelete?: (id: string) => void;
@@ -147,7 +148,25 @@ export const RequestMessageCard = React.memo(function RequestMessageCard({ messa
         >
           {/* Header Area */}
           <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col">
+              <span className="font-bebas text-3xl text-white tracking-widest">{message.amount} <span className={accentColor}>{tokenSymbol}</span></span>
+              <span className="font-['DM_Mono'] text-[10px] text-white/30 uppercase tracking-[2px] mt-1">
+                {message.status === 'accepted' ? 'Transaction Verified ON-CHAIN' : 'Fulfillment Pending...'}
+              </span>
+            </div>
+            
             <div className="flex items-center gap-3">
+              {message.tx_hash && (
+                <a 
+                  href={`https://starkscan.co/tx/${message.tx_hash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`p-2 border border-white/10 hover:border-white/30 rounded-md transition-all ${bgColor}`}
+                  title="View on Explorer"
+                >
+                  <ArrowUpRight className="w-4 h-4 text-white/40 group-hover:text-white" />
+                </a>
+              )}
               <div className={`p-2 border rounded-lg shadow-inner ${tokenSymbol === 'ETH' ? 'bg-[#0af0ff]/20 border-[#0af0ff]/30 text-[#0af0ff]' : 'bg-indigo-500/20 border-indigo-500/30 text-indigo-400'}`}>
                 <HandCoins className="w-5 h-5" />
               </div>

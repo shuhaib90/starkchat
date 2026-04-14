@@ -18,6 +18,7 @@ interface PaymentMessageCardProps {
     token?: string;
     payload?: any;
     status?: "pending" | "success" | "failed" | "accepted";
+    tx_hash?: string;
     created_at: string;
   };
   onDelete?: (id: string) => void;
@@ -148,11 +149,21 @@ export const PaymentMessageCard = React.memo(function PaymentMessageCard({ messa
               </div>
 
               <div className="flex flex-col">
-                <span className="font-['DM_Mono'] text-[8px] text-white/40 uppercase tracking-[2px] mb-0.5">AMOUNT</span>
-                <div className={`font-bebas text-3xl tracking-tighter ${accentColor}`}>
-                  {message.content} <span className="text-xl opacity-40">{tokenSymbol}</span>
-                </div>
+                <span className="font-bebas text-3xl text-white tracking-widest">{message.content} <span className={accentColor}>{tokenSymbol}</span></span>
+                <span className="font-['DM_Mono'] text-[10px] text-white/30 uppercase tracking-[2px] mt-1">Transaction Verified ON-CHAIN</span>
               </div>
+
+              {message.tx_hash && (
+                <a 
+                  href={`https://starkscan.co/tx/${message.tx_hash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`flex items-center justify-center gap-2 mt-2 py-2 border border-white/10 hover:border-white/30 rounded-md transition-all group/link ${bgColor}`}
+                >
+                  <ArrowUpRight className="w-3.5 h-3.5 text-white/40 group-hover:text-white transition-colors" />
+                  <span className="font-unbounded text-[8px] text-white/40 group-hover:text-white tracking-[2px] uppercase">View on Explorer</span>
+                </a>
+              )}
 
               {isPendingRequest && !isMe && (
                 <button
