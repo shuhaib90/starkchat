@@ -4,6 +4,8 @@ import React, { createContext, useContext, useEffect, useState, useMemo } from "
 import { StarkZap } from "starkzap";
 
 import { RpcProvider } from "starknet";
+import { connect, disconnect } from "starknetkit";
+import { normalizeAddress } from "@/lib/address";
 import { NetworkDiagnostic } from "./NetworkDiagnostic";
 
 // The STRK token address on starknet mainnet
