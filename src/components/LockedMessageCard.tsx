@@ -13,6 +13,7 @@ interface LockedMessageCardProps {
   message: {
     id: string;
     sender_address: string;
+    receiver_address: string;
     encrypted_content: string;
     unlock_price: number;
     token?: string;
@@ -90,7 +91,8 @@ export const LockedMessageCard = React.memo(function LockedMessageCard({ message
           // [DUAL-SYNC] Broadcast the unlock to the peer instantly
           const updatedMsg = { ...message, is_unlocked: true, status: "accepted", tx_hash: result.transactionHash };
           const me = normalizeAddress(address);
-          const them = normalizeAddress(message.sender_address === me ? message.receiver_address : message.sender_address);
+          // Receiver is always the one who unlocks, so peer is the sender
+          const them = normalizeAddress(message.sender_address);
           const sharedTopic = [me, them].sort().join("-").slice(0, 100);
           const activeChannel = supabase.getChannels().find(c => c.topic === `realtime:chat:${sharedTopic}`);
           if (activeChannel) {
