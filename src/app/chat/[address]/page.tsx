@@ -3,15 +3,24 @@
 import { ConnectWalletButton } from "@/components/ConnectWalletButton";
 import { ChatWindow } from "@/components/ChatWindow";
 import { UserAvatar } from "@/components/UserAvatar";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useState } from "react";
 
 import { normalizeAddress } from "@/lib/address";
 
 export default function ChatRoom() {
   const params = useParams();
   const receiverAddress = normalizeAddress(params.address as string);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setRefreshKey(prev => prev + 1);
+    setTimeout(() => setIsRefreshing(false), 1000);
+  };
 
   return (
     <main className="h-screen w-full flex flex-col relative bg-[#06070a] overflow-hidden">
@@ -36,7 +45,16 @@ export default function ChatRoom() {
           </div>
         </div>
         
-        <div className="flex items-center gap-4 scale-90 sm:scale-100">
+        <div className="flex items-center gap-6 scale-90 sm:scale-100">
+          <button 
+            onClick={handleRefresh}
+            className="group flex items-center gap-2 hover:bg-white/5 px-3 py-1.5 rounded-full border border-white/5 transition-all active:scale-95"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-white/40 group-hover:text-[#c8ff00] transition-colors ${isRefreshing ? 'animate-spin text-[#c8ff00]' : ''}`} />
+            <span className="hidden sm:inline text-[9px] font-['DM_Mono'] text-white/20 group-hover:text-white/60 tracking-widest uppercase transition-colors">
+              RE-SYNC
+            </span>
+          </button>
           <ConnectWalletButton />
         </div>
       </header>
@@ -44,7 +62,7 @@ export default function ChatRoom() {
       {/* Fullscreen Chat App Area */}
       <div className="flex-1 w-full min-h-0 z-40 relative">
         {receiverAddress ? (
-          <ChatWindow receiverAddress={receiverAddress} />
+          <ChatWindow key={refreshKey} receiverAddress={receiverAddress} />
         ) : null}
       </div>
 

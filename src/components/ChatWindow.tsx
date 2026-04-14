@@ -263,29 +263,6 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
 
   return (
     <div className="flex flex-col h-full bg-transparent relative group">
-      {/* Production Diagnostic Panel & Refresh Control */}
-      <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center">
-        <div className="bg-black/80 backdrop-blur-md border border-white/20 rounded-full px-4 py-1.5 flex items-center gap-3 shadow-[0_0_20px_rgba(0,0,0,0.5)]">
-          <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${realtimeStatus === 'SUBSCRIBED' ? 'bg-[#c8ff00] shadow-[0_0_8px_#c8ff00]' : 'bg-red-500 shadow-[0_0_8px_red]'}`} />
-          <span className="text-[9px] font-['DM_Mono'] text-white/60 tracking-widest uppercase flex items-center gap-2">
-            SIGNAL: <span className={realtimeStatus === 'SUBSCRIBED' ? 'text-white' : 'text-red-400'}>{realtimeStatus}</span>
-          </span>
-          <div className="w-px h-3 bg-white/10" />
-          
-          <button 
-            onClick={() => fetchInitialMessages()}
-            disabled={isLoading}
-            className="group/refresh flex items-center gap-2 hover:bg-white/5 px-2 py-0.5 rounded-full transition-all duration-300"
-            title="Manual Re-Sync"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 text-white/40 group-hover/refresh:text-[#c8ff00] transition-colors ${isLoading ? 'animate-spin text-[#c8ff00]' : ''}`} />
-            <span className="text-[9px] font-['DM_Mono'] text-white/20 group-hover/refresh:text-white/60 tracking-widest uppercase transition-colors">
-              RE-SYNC
-            </span>
-          </button>
-        </div>
-      </div>
-
       <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(var(--ink-border) 1px, transparent 0)', backgroundSize: '32px 32px' }} />
       <div className="flex-1 overflow-y-auto custom-scrollbar z-10 w-full pt-24 pb-2">
         <div className="max-w-6xl mx-auto w-full px-4 sm:px-12">
