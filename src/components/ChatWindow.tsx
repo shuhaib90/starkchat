@@ -52,10 +52,17 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
 
           const isRelevant = (s === me && r === them) || (s === them && r === me);
 
-          if (!isRelevant) return;
+          // [REALTIME_DIAGNOSTIC] Log every incoming relevant message
+          console.log(`[Realtime] Event: ${payload.eventType}, Relevant: ${isRelevant}`, { s, r, me, them });
 
+          if (!isRelevant) return;
+          
           if (payload.eventType === 'INSERT') {
-            setMessages((prev) => [...prev, payload.new]);
+            setMessages((prev) => {
+              // Prevent duplicate messages if optimistic update already added it
+              if (prev.some(m => m.id === payload.new.id)) return prev;
+              return [...prev, payload.new];
+            });
             // Mark new incoming messages from them as read instantly
             if (s === them) {
               markMessagesAsRead();
@@ -69,7 +76,9 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log(`[Realtime] Subscription Status: ${status} for channel: messages-${address}-${receiverAddress}`);
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -135,24 +144,47 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
 
   const handleSendText = async (content: string) => {
     if (!address) return;
+    
+    // Create optimistic message
+    const tempId = crypto.randomUUID();
+    const optimisticMsg = {
+      id: tempId,
+      sender_address: normalizeAddress(address),
+      receiver_address: normalizeAddress(receiverAddress),
+      content,
+      type: "text",
+      is_read: false,
+      created_at: new Date().toISOString(),
+      status: 'sending'
+    };
+
+    // Add to UI immediately
+    setMessages(prev => [...prev, optimisticMsg]);
+
     try {
-      const { error } = await supabase.from("messages").insert([
+      const { data, error } = await supabase.from("messages").insert([
         {
-          sender_address: normalizeAddress(address),
-          receiver_address: normalizeAddress(receiverAddress),
+          sender_address: optimisticMsg.sender_address,
+          receiver_address: optimisticMsg.receiver_address,
           content,
           type: "text",
           is_read: false
         },
-      ]);
+      ]).select().single();
       
       if (error) {
         console.error("Error sending message:", error);
         showDiagnostic(`Signal failed to transmit: ${error.message}`, "error");
+        // Remove optimistic message on failure
+        setMessages(prev => prev.filter(m => m.id !== tempId));
+      } else if (data) {
+        // Replace optimistic message with real message from DB
+        setMessages(prev => prev.map(m => m.id === tempId ? data : m));
       }
     } catch (err: any) {
       console.error("Critical error sending message:", err);
       showDiagnostic(`Critical error: ${err.message || "Network Error"}`, "error");
+      setMessages(prev => prev.filter(m => m.id !== tempId));
     }
   };
 

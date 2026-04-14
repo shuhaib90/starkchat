@@ -7,9 +7,11 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
+import { normalizeAddress } from "@/lib/address";
+
 export default function ChatRoom() {
   const params = useParams();
-  const receiverAddress = params.address as string;
+  const receiverAddress = normalizeAddress(params.address as string);
 
   return (
     <main className="h-screen w-full flex flex-col relative bg-[#06070a] overflow-hidden">

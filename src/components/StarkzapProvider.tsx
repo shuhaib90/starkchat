@@ -139,7 +139,8 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
         }
         
         setWallet(account);
-        setAddress(result.connectorData?.account || rawWallet.selectedAddress || account?.address);
+        const rawAddress = result.connectorData?.account || rawWallet.selectedAddress || account?.address;
+        setAddress(normalizeAddress(rawAddress));
         setConnectorId(result.connector.id);
       }
     } catch (error) {
