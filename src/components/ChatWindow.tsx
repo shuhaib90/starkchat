@@ -207,6 +207,19 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
         if (activeChannel) {
           activeChannel.send({ type: 'broadcast', event: 'new_message', payload: cleanMsg });
         }
+
+        // [GLOBAL-PULSE] Also broadcast to the receiver's private user channel for inbox updates
+        const userChannel = supabase.channel(`user:${them}`);
+        userChannel.subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await userChannel.send({
+              type: 'broadcast',
+              event: 'inbox_update',
+              payload: cleanMsg
+            });
+            supabase.removeChannel(userChannel); // Temporary channel for one-shot broadcast
+          }
+        });
       }
     } catch (err: any) {
       console.error("Error sending message:", err);

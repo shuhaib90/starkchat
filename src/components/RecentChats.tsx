@@ -63,9 +63,10 @@ export function RecentChats() {
 
     fetchPreviews();
 
-    // Subscribe to realtime updates for inbox
+    // Subscribe to realtime updates for inbox (Postgres + Global Pulse Broadcast)
+    const normalizedMe = normalizeAddress(address);
     const channel = supabase
-      .channel(`inbox-${address}`)
+      .channel(`inbox:${normalizedMe}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'messages' },
@@ -83,13 +84,19 @@ export function RecentChats() {
           const r = normalizeAddress(msg.receiver_address);
           const me = normalizeAddress(address);
 
-          // If the newly inserted message involves the current user, re-fetch
           if (s === me || r === me) {
+             console.log("[Global Pulse: DB] Inbox re-fetch triggered");
              fetchPreviews(); 
           }
         }
       )
-      .subscribe();
+      .on('broadcast', { event: 'inbox_update' }, ({ payload }) => {
+        console.log("[Global Pulse: Broadcast] Instant inbox update received", payload.id);
+        fetchPreviews(); // Re-fetch all to ensure correct ordering and status
+      })
+      .subscribe((status) => {
+        console.log(`[Global Pulse Status] ${status} for user channel`);
+      });
 
     return () => {
       supabase.removeChannel(channel);
