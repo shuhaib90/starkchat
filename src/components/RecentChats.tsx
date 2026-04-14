@@ -123,9 +123,10 @@ export function RecentChats() {
 
     // Messages are sorted descending (newest first). 
     for (const msg of messages) {
-      if (!msg.sender_address || !msg.receiver_address) continue;
-
-      const peer = normalizeAddress(s) === me ? msg.receiver_address : msg.sender_address;
+      const s = msg.sender_address;
+      const r = msg.receiver_address;
+      
+      const peer = normalizeAddress(s) === me ? r : s;
       const peerKey = normalizeAddress(peer);
 
       if (!map.has(peerKey)) {
