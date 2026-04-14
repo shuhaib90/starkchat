@@ -25,7 +25,7 @@ export default function Hero({ onEnter }: HeroProps) {
         poster="/zenvic.png"
         className="absolute inset-0 w-full h-full object-cover z-0"
       >
-        <source src="/hero section/video_2026-04-14_22-15-41.mp4" type="video/mp4" />
+        <source src="/hero section/Simple_Movement_Animation_Generated-ezremove.mp4" type="video/mp4" />
         {/* Fallback can be added here if a mobile image is provided */}
       </video>
 
