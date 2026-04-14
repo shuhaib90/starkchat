@@ -176,7 +176,7 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
         >
           <div className="w-12 h-12 rounded-full border-2 border-white/10 group-hover:border-[#c8ff00] transition-all overflow-hidden shadow-2xl bg-[#0e1016]">
             <Image 
-              src="/zenvic_brand.png" 
+              src="/zenvic.png" 
               alt="Zenvic" 
               width={48} 
               height={48} 
