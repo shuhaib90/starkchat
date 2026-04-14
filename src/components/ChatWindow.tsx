@@ -89,18 +89,18 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
 
     markMessagesAsRead();
 
-    // [BLUEPRINT SYNC] Standard Realtime Subscription
+    // [BLUEPRINT SYNC] Standard Realtime Subscription (Harden for all events)
     const channel = supabase
       .channel('messages-realtime')
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*', // Listen for INSERT, UPDATE, and DELETE
           schema: 'public',
           table: 'messages',
         },
         (payload) => {
-          const newMsg = payload.new;
+          const newMsg = payload.new as any;
           if (!newMsg) return;
 
           const me = normalizeAddress(address);
@@ -113,15 +113,28 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
           const isRelevant = (s === me && r === them) || (s === them && r === me);
           
           if (isRelevant) {
-            console.log("[Blueprint Sync] New message received:", newMsg.id);
+            console.log(`[Blueprint Sync] Signal received [${payload.eventType}]:`, newMsg.id);
+            
             setMessages((prev) => {
-              if (prev.some(m => m.id === newMsg.id)) return prev;
-              const sorted = [...prev, newMsg].sort((a, b) => 
-                new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-              );
-              return sorted;
+              if (payload.eventType === 'INSERT') {
+                if (prev.some(m => m.id === newMsg.id)) return prev;
+                return [...prev, newMsg].sort((a, b) => 
+                  new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                );
+              } 
+              
+              if (payload.eventType === 'UPDATE') {
+                return prev.map(m => m.id === newMsg.id ? newMsg : m);
+              }
+
+              if (payload.eventType === 'DELETE') {
+                return prev.filter(m => m.id !== payload.old.id);
+              }
+
+              return prev;
             });
-            if (s === them) markMessagesAsRead();
+
+            if (payload.eventType === 'INSERT' && s === them) markMessagesAsRead();
           }
         }
       )
