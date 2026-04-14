@@ -146,5 +146,6 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
         </a>
       </div>
     </div>
-  );
+  </div>
+);
 }
