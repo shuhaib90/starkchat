@@ -5,6 +5,7 @@ import { useWallet, STRK_TOKEN_ADDRESS, ETH_TOKEN_ADDRESS } from "./StarkzapProv
 import { X, DollarSign, Send, Loader2, ArrowUpRight, Coins, ShieldCheck } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { executeStarknetPayment } from "@/lib/starkzap";
+import { normalizeAddress } from "@/lib/address";
 
 interface SendMoneyModalProps {
   isOpen: boolean;
@@ -46,8 +47,8 @@ export function SendMoneyModal({ isOpen, onClose, receiverAddress }: SendMoneyMo
       const { data: message, error: insertError } = await supabase
         .from('messages')
         .insert({
-          sender_address: address,
-          receiver_address: receiver,
+          sender_address: normalizeAddress(address),
+          receiver_address: normalizeAddress(receiver),
           type: "payment",
           content: amount, 
           amount: Number(amount),
@@ -58,7 +59,8 @@ export function SendMoneyModal({ isOpen, onClose, receiverAddress }: SendMoneyMo
         .single();
 
       if (insertError) {
-        showDiagnostic("Failed to prepare transaction signal.", "error");
+        console.error("[Starkzap] Insert Pending Error:", insertError);
+        showDiagnostic(`Failed to prepare transaction signal: ${insertError.message}`, "error");
         throw insertError;
       }
       messageId = message.id;

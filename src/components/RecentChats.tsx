@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { UserAvatar } from "./UserAvatar";
 import { ShareProfile } from "./ShareProfile";
+import { normalizeAddress } from "@/lib/address";
 
 export interface ChatPreview {
   peerAddress: string;
@@ -43,13 +44,14 @@ export function RecentChats() {
 
     const fetchPreviews = async () => {
       setIsLoading(true);
-      const me = address.toLowerCase();
+      const me = normalizeAddress(address);
 
       // Fetch top 500 messages involving this user
+      // Optimized to use eq instead of ilike after normalization
       const { data, error } = await supabase
         .from('messages')
         .select('*')
-        .or(`sender_address.ilike.${me},receiver_address.ilike.${me}`)
+        .or(`sender_address.eq.${me},receiver_address.eq.${me}`)
         .order('created_at', { ascending: false })
         .limit(500);
 
@@ -97,13 +99,13 @@ export function RecentChats() {
     if (!confirmed) return;
 
     try {
-      const me = address.toLowerCase();
-      const peer = peerAddress.toLowerCase();
+      const me = normalizeAddress(address);
+      const peer = normalizeAddress(peerAddress);
 
       const { error } = await supabase
         .from('messages')
         .delete()
-        .or(`and(sender_address.ilike.${me},receiver_address.ilike.${peer}),and(sender_address.ilike.${peer},receiver_address.ilike.${me})`);
+        .or(`and(sender_address.eq.${me},receiver_address.eq.${peer}),and(sender_address.eq.${peer},receiver_address.eq.${me})`);
 
       if (error) throw error;
 

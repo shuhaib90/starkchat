@@ -71,6 +71,21 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
       network: "mainnet" 
     });
     setSdk(instance);
+
+    // [DIAGNOSTIC] Check for critical Supabase environment variables
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error("[StarkChat] CRITICAL: Supabase environment variables are missing!");
+      // Delay slightly to ensure UI is ready
+      setTimeout(() => {
+        showDiagnostic(
+          "ENVIRONMENT_ERROR: NEXT_PUBLIC_SUPABASE_URL or ANON_KEY is missing. Core messaging features will fail. Check Vercel dashboard settings.", 
+          "error"
+        );
+      }, 1500);
+    }
   }, []);
 
   const connectWallet = async () => {

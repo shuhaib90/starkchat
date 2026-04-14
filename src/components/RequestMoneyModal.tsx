@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useWallet } from "./StarkzapProvider";
 import { X, HandCoins, Send, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { normalizeAddress } from "@/lib/address";
 
 interface RequestMoneyModalProps {
   isOpen: boolean;
@@ -12,7 +13,7 @@ interface RequestMoneyModalProps {
 }
 
 export function RequestMoneyModal({ isOpen, onClose, receiverAddress }: RequestMoneyModalProps) {
-  const { address } = useWallet();
+  const { address, showDiagnostic } = useWallet();
   const [amount, setAmount] = useState("");
   const [token, setToken] = useState<"STRK" | "ETH">("STRK");
   const [isSending, setIsSending] = useState(false);
@@ -34,8 +35,8 @@ export function RequestMoneyModal({ isOpen, onClose, receiverAddress }: RequestM
       const { error } = await supabase
         .from('messages')
         .insert({
-          sender_address: address.toLowerCase(),
-          receiver_address: receiverAddress.toLowerCase(),
+          sender_address: normalizeAddress(address),
+          receiver_address: normalizeAddress(receiverAddress),
           type: "request",
           content: amount, 
           amount: Number(amount),
@@ -43,12 +44,17 @@ export function RequestMoneyModal({ isOpen, onClose, receiverAddress }: RequestM
           status: "pending"
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error("[StarkChat] Request Insert Error:", error);
+        throw error;
+      }
 
       onClose();
       setAmount("");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Request failed", err);
+      // @ts-ignore
+      showDiagnostic(`Request failed: ${err.message || "Network Error"}`, "error");
     } finally {
       setIsSending(false);
     }

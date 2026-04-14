@@ -5,6 +5,7 @@ import { useWallet } from "./StarkzapProvider";
 import { Lock, X, Send, Loader2, ShieldCheck, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { encryptText } from "@/lib/crypto";
+import { normalizeAddress } from "@/lib/address";
 
 interface SendLockedMessageModalProps {
   isOpen: boolean;
@@ -13,7 +14,7 @@ interface SendLockedMessageModalProps {
 }
 
 export function SendLockedMessageModal({ isOpen, onClose, receiverAddress }: SendLockedMessageModalProps) {
-  const { address } = useWallet();
+  const { address, showDiagnostic } = useWallet();
   const [content, setContent] = useState("");
   const [price, setPrice] = useState("");
   const [token, setToken] = useState<"STRK" | "ETH">("STRK");
@@ -37,11 +38,11 @@ export function SendLockedMessageModal({ isOpen, onClose, receiverAddress }: Sen
       const encrypted = await encryptText(content.trim());
 
       // 2. Store in Supabase
-      const { error } = await supabase
+        const { error } = await supabase
         .from('messages')
         .insert({
-          sender_address: address.toLowerCase(),
-          receiver_address: receiverAddress.toLowerCase(),
+          sender_address: normalizeAddress(address),
+          receiver_address: normalizeAddress(receiverAddress),
           type: "locked",
           encrypted_content: encrypted,
           unlock_price: Number(price),
@@ -56,6 +57,8 @@ export function SendLockedMessageModal({ isOpen, onClose, receiverAddress }: Sen
       setPrice("");
     } catch (err: any) {
       console.error("Lock message failed", err);
+      // @ts-ignore
+      showDiagnostic(`Encryption upload failed: ${err.message || "Network Error"}`, "error");
     } finally {
       setIsSending(false);
     }

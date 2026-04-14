@@ -11,6 +11,7 @@ import { RequestMessageCard } from "./RequestMessageCard";
 import { LockedMessageCard } from "./LockedMessageCard";
 import { MessageInput } from "./MessageInput";
 import { Loader2, Terminal } from "lucide-react";
+import { normalizeAddress } from "@/lib/address";
 
 import { useWallet } from "./StarkzapProvider";
 
@@ -99,13 +100,13 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
   const fetchInitialMessages = async () => {
     if (!address) return;
     setIsLoading(true);
-    const me = address.toLowerCase();
-    const them = receiverAddress.toLowerCase();
+    const me = normalizeAddress(address);
+    const them = normalizeAddress(receiverAddress);
 
     const { data, error } = await supabase
       .from('messages')
       .select('*')
-      .or(`and(sender_address.ilike.${me},receiver_address.ilike.${them}),and(sender_address.ilike.${them},receiver_address.ilike.${me})`)
+      .or(`and(sender_address.eq.${me},receiver_address.eq.${them}),and(sender_address.eq.${them},receiver_address.eq.${me})`)
       .order('created_at', { ascending: true })
       .limit(100);
     
@@ -113,7 +114,7 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
       setMessages(data);
     } else if (error) {
       console.error("Fetch messages error:", error);
-      showDiagnostic("Database connection error. Try refreshing.", "error");
+      showDiagnostic(`Database connection error: ${error.message}. Ensure your credentials are set.`, "error");
     }
     setIsLoading(false);
   };
@@ -134,18 +135,24 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
 
   const handleSendText = async (content: string) => {
     if (!address) return;
-    const { error } = await supabase.from("messages").insert([
-      {
-        sender_address: address.toLowerCase(),
-        receiver_address: receiverAddress.toLowerCase(),
-        content,
-        type: "text",
-        is_read: false
-      },
-    ]);
-    if (error) {
-      console.error("Error sending message:", error);
-      showDiagnostic("Signal failed to transmit to database.", "error");
+    try {
+      const { error } = await supabase.from("messages").insert([
+        {
+          sender_address: normalizeAddress(address),
+          receiver_address: normalizeAddress(receiverAddress),
+          content,
+          type: "text",
+          is_read: false
+        },
+      ]);
+      
+      if (error) {
+        console.error("Error sending message:", error);
+        showDiagnostic(`Signal failed to transmit: ${error.message}`, "error");
+      }
+    } catch (err: any) {
+      console.error("Critical error sending message:", err);
+      showDiagnostic(`Critical error: ${err.message || "Network Error"}`, "error");
     }
   };
 
