@@ -20,11 +20,6 @@ export const supabase = createClient(
     realtime: {
       params: {
         eventsPerSecond: 20,
-      },
-      // Force WSS on production domains
-      config: {
-        broadcast: { self: true },
-        presence: { key: 'user' }
       }
     },
     auth: {
