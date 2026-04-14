@@ -73,18 +73,31 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
     if (!address) return;
     
     fetchInitialMessages();
+    const markMessagesAsRead = async () => {
+      if (!address) return;
+      try {
+        await supabase
+          .from('messages')
+          .update({ is_read: true })
+          .eq('receiver_address', normalizeAddress(address))
+          .eq('sender_address', normalizeAddress(receiverAddress))
+          .eq('is_read', false);
+      } catch (err) {
+        console.error("Error marking messages as read:", err);
+      }
+    };
+
     markMessagesAsRead();
 
-    // [DUAL-SYNC] Shared alphabetical channel
-    // [DUAL-SYNC] Create a shared channel name for both users
+    // [HIGH-PERFORMANCE ENGINE] Consolidated Database Stream
     const me = normalizeAddress(address);
     const them = normalizeAddress(receiverAddress);
-    // STABLE SORT: Ensure the channel name is identical for both parties
+    // Stable pairing for the channel name
     const participants = [me, them].sort((a, b) => a.localeCompare(b));
-    const sharedTopic = participants.join("-").slice(0, 100); 
+    const sharedTopic = `chat:${participants.join("-").slice(0, 100)}`; 
 
     const channel = supabase
-      .channel(`chat:${sharedTopic}`)
+      .channel(sharedTopic)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'messages' },
@@ -98,59 +111,51 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
             receiver_address: normalizeAddress(rawMsg.receiver_address)
           };
 
-          const s = normalizeAddress(msg.sender_address);
-          const r = normalizeAddress(msg.receiver_address);
-          const currentMe = normalizeAddress(address);
-          const currentThem = normalizeAddress(receiverAddress);
+          const s = msg.sender_address;
+          const r = msg.receiver_address;
 
-          const isRelevant = (s === currentMe && r === currentThem) || (s === currentThem && r === currentMe);
+          // Unified relevance check
+          const isRelevant = (s === me && r === them) || (s === them && r === me);
           if (!isRelevant) return;
 
-          console.log(`[Dual-Sync: DB] Event: ${payload.eventType}`, msg.id);
+          console.log(`[Sync Engine] Received ${payload.eventType} event:`, msg.id);
 
           if (payload.eventType === 'INSERT') {
             setMessages((prev) => {
+              // De-duplicate in case of local-optimistic vs remote-sync
               if (prev.some(m => m.id === msg.id)) return prev;
-              const newMsgs = [...prev, msg];
-              return newMsgs.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+              return [...prev, msg].sort((a, b) => 
+                new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+              );
             });
-            if (s === currentThem) markMessagesAsRead();
+            if (s === them) markMessagesAsRead();
           } else if (payload.eventType === 'UPDATE') {
             setMessages((prev) => prev.map(m => m.id === msg.id ? msg : m));
-          } else if (payload.eventType === 'DELETE') {
-            setMessages((prev) => prev.filter(m => m.id !== msg.id));
           }
         }
       )
       .on('broadcast', { event: 'new_message' }, ({ payload }) => {
-        console.log(`[Dual-Sync: Broadcast] Received`, payload.id);
+        // Broadcast acts as a sub-50ms booster while DB replicates
         const msg = {
           ...payload,
           sender_address: normalizeAddress(payload.sender_address),
           receiver_address: normalizeAddress(payload.receiver_address)
         };
+        if (msg.sender_address === me) return; // Ignore our own echo
+
         setMessages((prev) => {
           if (prev.some(m => m.id === msg.id)) return prev;
-          const newMsgs = [...prev, msg];
-          return newMsgs.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+          console.log("[Sync Engine] Broadcast Boost received!");
+          return [...prev, msg].sort((a, b) => 
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
         });
       })
-      .on('broadcast', { event: 'message_update' }, ({ payload }) => {
-        console.log(`[Dual-Sync: Broadcast Update] Received`, payload.id);
-        const msg = {
-          ...payload,
-          sender_address: normalizeAddress(payload.sender_address),
-          receiver_address: normalizeAddress(payload.receiver_address)
-        };
-        setMessages((prev) => prev.map(m => m.id === msg.id ? msg : m));
-      })
       .subscribe((status, err) => {
-        console.log(`[Dual-Sync Status] ${status} for ${sharedTopic}`);
         setRealtimeStatus(status.toUpperCase());
         setActiveChannelId(sharedTopic);
         if (err) {
-          console.error(`[Realtime Error] Connection failed:`, err.message);
-          showDiagnostic(`Realtime Signal Lost: ${err.message}`, "warning");
+          console.error(`[Sync Engine] Error:`, err.message);
           setRealtimeStatus(`ERROR: ${err.message}`);
         }
       });
