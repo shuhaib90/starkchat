@@ -1,23 +1,25 @@
 import { createClient } from '@supabase/supabase-js';
 
-const sanitize = (val: string | undefined) => val?.trim().replace(/^["'](.+)["']$/, '$1').replace(/\/$/, '');
+const getSupabaseConfig = () => {
+  const sanitize = (val: string | undefined) => val?.trim().replace(/^["'](.+)["']$/, '$1').replace(/\/$/, '');
+  const url = sanitize(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const key = sanitize(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
-const supabaseUrl = sanitize(process.env.NEXT_PUBLIC_SUPABASE_URL);
-const supabaseAnonKey = sanitize(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  if (typeof window !== 'undefined' && url) {
+    const projectRef = url.match(/https:\/\/(.+)\.supabase/)?.[1];
+    console.log(`[Diagnostic] Supabase Init - Domain: ${window.location.hostname}`);
+    console.log(`[Diagnostic] Supabase Init - Project Ref: ${projectRef || "UNKNOWN"}`);
+    console.log(`[Diagnostic] Supabase Init - Key Present: ${key ? "YES" : "NO"}`);
+  }
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error("[StarkChat] Supabase environment variables are MISSING. Ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set in your environment (Local or Vercel).");
-}
+  return { url, key };
+};
 
-// [DIAGNOSTIC] Log current connection parameters on production
-if (typeof window !== 'undefined') {
-  console.log(`[StarkChat Environment] Domain: ${window.location.hostname}`);
-  console.log(`[StarkChat Environment] Supabase URL: ${supabaseUrl ? "Detected ✅" : "Missing ❌"}`);
-}
+const { url: finalUrl, key: finalKey } = getSupabaseConfig();
 
 export const supabase = createClient(
-  supabaseUrl || 'https://placeholder.supabase.co', 
-  supabaseAnonKey || 'placeholder',
+  finalUrl || 'https://placeholder.supabase.co', 
+  finalKey || 'placeholder',
   {
     global: {
       headers: { 'x-application-name': 'starkchat-prod' }
