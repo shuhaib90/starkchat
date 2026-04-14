@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { executeStarknetPayment } from "@/lib/starkzap";
 import { UserAvatar } from "./UserAvatar";
 import { useWallet } from "./StarkzapProvider";
+import { normalizeAddress } from "@/lib/address";
 
 interface LockedMessageCardProps {
   message: {

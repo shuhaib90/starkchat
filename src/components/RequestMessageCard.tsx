@@ -8,6 +8,7 @@ import { useWallet, STRK_TOKEN_ADDRESS, ETH_TOKEN_ADDRESS } from "./StarkzapProv
 import { supabase } from "@/lib/supabase";
 import { UserAvatar } from "./UserAvatar";
 import { executeStarknetPayment } from "@/lib/starkzap";
+import { normalizeAddress } from "@/lib/address";
 
 interface RequestMessageCardProps {
   message: {

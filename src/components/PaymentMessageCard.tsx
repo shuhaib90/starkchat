@@ -6,6 +6,7 @@ import { useWallet } from "./StarkzapProvider";
 import { executeStarknetPayment } from "@/lib/starkzap";
 import { supabase } from "@/lib/supabase";
 import { UserAvatar } from "./UserAvatar";
+import { normalizeAddress } from "@/lib/address";
 
 interface PaymentMessageCardProps {
   message: {

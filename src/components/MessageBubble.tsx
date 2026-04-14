@@ -2,6 +2,7 @@
 
 import React from "react";
 import { UserAvatar } from "./UserAvatar";
+import { normalizeAddress } from "@/lib/address";
 import { useWallet } from "./StarkzapProvider";
 import { Trash2 } from "lucide-react";
 
