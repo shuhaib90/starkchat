@@ -45,10 +45,10 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
           
           if (!msg || !msg.sender_address || !msg.receiver_address) return;
 
-          const s = msg.sender_address.toLowerCase();
-          const r = msg.receiver_address.toLowerCase();
-          const me = address.toLowerCase();
-          const them = receiverAddress.toLowerCase();
+          const s = normalizeAddress(msg.sender_address);
+          const r = normalizeAddress(msg.receiver_address);
+          const me = normalizeAddress(address);
+          const them = normalizeAddress(receiverAddress);
 
           const isRelevant = (s === me && r === them) || (s === them && r === me);
 
@@ -78,8 +78,8 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
 
   const markMessagesAsRead = async () => {
     if (!address) return;
-    const me = address.toLowerCase();
-    const them = receiverAddress.toLowerCase();
+    const me = normalizeAddress(address);
+    const them = normalizeAddress(receiverAddress);
 
     // Update all unread messages from 'them' sent to 'me'
     await supabase

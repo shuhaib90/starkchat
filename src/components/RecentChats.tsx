@@ -73,9 +73,9 @@ export function RecentChats() {
           const msg = payload.new || payload.old;
           if (!msg || !msg.sender_address || !msg.receiver_address) return;
 
-          const s = msg.sender_address.toLowerCase();
-          const r = msg.receiver_address.toLowerCase();
-          const me = address.toLowerCase();
+          const s = normalizeAddress(msg.sender_address);
+          const r = normalizeAddress(msg.receiver_address);
+          const me = normalizeAddress(address);
 
           // If the newly inserted message involves the current user, re-fetch
           if (s === me || r === me) {
@@ -110,7 +110,7 @@ export function RecentChats() {
       if (error) throw error;
 
       // Update local state for instant feedback
-      setPreviews(prev => prev.filter(p => p.peerAddress.toLowerCase() !== peer));
+      setPreviews(prev => prev.filter(p => normalizeAddress(p.peerAddress) !== peer));
       console.log(`[StarkChat] Purged conversation with ${peerAddress}`);
     } catch (err) {
       console.error("[StarkChat] Deletion failed:", err);
@@ -125,11 +125,8 @@ export function RecentChats() {
     for (const msg of messages) {
       if (!msg.sender_address || !msg.receiver_address) continue;
 
-      const s = msg.sender_address.toLowerCase();
-      const r = msg.receiver_address.toLowerCase();
-      
-      const peer = s === me ? msg.receiver_address : msg.sender_address;
-      const peerKey = peer.toLowerCase();
+      const peer = normalizeAddress(s) === me ? msg.receiver_address : msg.sender_address;
+      const peerKey = normalizeAddress(peer);
 
       if (!map.has(peerKey)) {
         map.set(peerKey, {
