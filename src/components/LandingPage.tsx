@@ -9,9 +9,11 @@ import {
   ShieldCheck, 
   Zap,
   ArrowRight,
-  TrendingUp
+  TrendingUp,
+  BarChart3
 } from "lucide-react";
 import { ConnectWalletButton } from "./ConnectWalletButton";
+import Link from "next/link";
 import { useTilt } from "@/hooks/useTilt";
 import Image from "next/image";
 
