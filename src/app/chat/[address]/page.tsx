@@ -52,7 +52,7 @@ export default function ChatRoom() {
           >
             <RefreshCw className={`w-3.5 h-3.5 text-white/40 group-hover:text-[#c8ff00] transition-colors ${isRefreshing ? 'animate-spin text-[#c8ff00]' : ''}`} />
             <span className="hidden sm:inline text-[9px] font-['DM_Mono'] text-white/20 group-hover:text-white/60 tracking-widest uppercase transition-colors">
-              RE-SYNC
+              REFRESH
             </span>
           </button>
           <ConnectWalletButton />
