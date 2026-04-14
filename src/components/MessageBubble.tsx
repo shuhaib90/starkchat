@@ -17,7 +17,7 @@ interface MessageBubbleProps {
 
 export const MessageBubble = React.memo(function MessageBubble({ message, onDelete }: MessageBubbleProps) {
   const { address } = useWallet();
-  const isMe = address?.toLowerCase() === message.sender_address.toLowerCase();
+  const isMe = normalizeAddress(address || "") === normalizeAddress(message.sender_address);
   
   const time = React.useMemo(() => {
     return new Date(message.created_at).toLocaleTimeString([], { 

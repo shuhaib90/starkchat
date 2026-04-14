@@ -25,8 +25,8 @@ interface RequestMessageCardProps {
 export const RequestMessageCard = React.memo(function RequestMessageCard({ message, onDelete }: RequestMessageCardProps) {
   const { address, wallet, showDiagnostic, rotateRpc } = useWallet();
   const [isProcessing, setIsProcessing] = useState(false);
-  const isMine = address?.toLowerCase() === message.sender_address.toLowerCase();
-  const isPayer = address?.toLowerCase() === message.receiver_address.toLowerCase();
+  const isMine = normalizeAddress(address || "") === normalizeAddress(message.sender_address);
+  const isPayer = normalizeAddress(address || "") === normalizeAddress(message.receiver_address);
   const tokenSymbol = message.token || "STRK";
   const tokenAddress = tokenSymbol === "ETH" ? ETH_TOKEN_ADDRESS : STRK_TOKEN_ADDRESS;
 

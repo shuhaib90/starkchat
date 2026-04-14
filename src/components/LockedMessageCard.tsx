@@ -27,7 +27,7 @@ export const LockedMessageCard = React.memo(function LockedMessageCard({ message
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [unlockedContent, setUnlockedContent] = useState<string | null>(null);
   
-  const isMe = address?.toLowerCase() === message.sender_address.toLowerCase();
+  const isMe = normalizeAddress(address || "") === normalizeAddress(message.sender_address);
   const tokenSymbol = message.token || "STRK";
   const shouldShowContent = message.is_unlocked || unlockedContent;
 

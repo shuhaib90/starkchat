@@ -25,7 +25,7 @@ export const PaymentMessageCard = React.memo(function PaymentMessageCard({ messa
   const { address, wallet, showDiagnostic, rotateRpc } = useWallet();
   const [isProcessing, setIsProcessing] = useState(false);
   
-  const isMe = address?.toLowerCase() === message.sender_address.toLowerCase();
+  const isMe = normalizeAddress(address || "") === normalizeAddress(message.sender_address);
   const isRequest = message.type === 'request';
   const isAcceptedRequest = isRequest && message.status === 'accepted';
   const isPendingRequest = isRequest && message.status === 'pending';

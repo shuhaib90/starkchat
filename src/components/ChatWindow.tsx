@@ -37,13 +37,17 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
     const channel = supabase
       .channel(`messages-${address}-${receiverAddress}`)
       .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'messages' },
-        (payload: any) => {
-          // Verify if this message belongs to the current 1:1 chat pair
-          const msg = payload.new || payload.old;
+          // [REALTIME_DIAGNOSTIC] Sanitize incoming payload
+          const rawMsg = payload.new || payload.old;
+          if (!rawMsg) return;
+
+          const msg = {
+            ...rawMsg,
+            sender_address: normalizeAddress(rawMsg.sender_address),
+            receiver_address: normalizeAddress(rawMsg.receiver_address)
+          };
           
-          if (!msg || !msg.sender_address || !msg.receiver_address) return;
+          if (!msg.sender_address || !msg.receiver_address) return;
 
           const s = normalizeAddress(msg.sender_address);
           const r = normalizeAddress(msg.receiver_address);
@@ -192,7 +196,7 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
     // Filter messages: Recipients should only see successful/accepted payments
     const filteredMessages = messages.filter(msg => {
       if (msg.type === 'payment') {
-        const isReceiver = address?.toLowerCase() === msg.receiver_address.toLowerCase();
+        const isReceiver = normalizeAddress(address || "") === normalizeAddress(msg.receiver_address);
         if (isReceiver) {
           return msg.status === 'success' || msg.status === 'accepted';
         }
