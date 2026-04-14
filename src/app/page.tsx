@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ConnectWalletButton } from "@/components/ConnectWalletButton";
 import { Zap, MessageSquare, ArrowRight, Terminal } from "lucide-react";
+import Image from "next/image";
 import { useWallet } from "@/components/StarkzapProvider";
 import { RecentChats } from "@/components/RecentChats";
 import { LandingPage } from "@/components/LandingPage";
@@ -38,8 +39,15 @@ export default function Home() {
             rel="noopener noreferrer"
             className="group relative transition-all active:scale-90 hidden xs:block"
           >
-            <div className="w-10 h-10 rounded-full border-2 border-[#c8ff00]/40 overflow-hidden shadow-[0_0_15px_rgba(200,255,0,0.2)] group-hover:border-[#c8ff00] transition-all">
-              <img src="/zenvic.png" alt="Zenvic" className="w-full h-full object-cover grayscale-[0.5] group-hover:grayscale-0 transition-all" />
+            <div className="w-10 h-10 rounded-full border-2 border-[#c8ff00]/40 overflow-hidden shadow-[0_0_15px_rgba(200,255,0,0.2)] group-hover:border-[#c8ff00] transition-all bg-[#0e1016]">
+              <Image 
+                src="/zenvic.png" 
+                alt="Zenvic" 
+                width={40} 
+                height={40} 
+                priority
+                className="w-full h-full object-cover grayscale-[0.5] group-hover:grayscale-0 transition-all" 
+              />
             </div>
             <div className="absolute -top-1 -right-1 w-3 h-3 bg-[#c8ff00] rounded-full border-2 border-[#0e1016] animate-pulse" />
           </a>

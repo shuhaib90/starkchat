@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { ConnectWalletButton } from "./ConnectWalletButton";
 import { useTilt } from "@/hooks/useTilt";
+import Image from "next/image";
 
 function FeatureCard({ feature, index }: { feature: any; index: number }) {
   const { style, onMouseMove, onMouseLeave } = useTilt(4);
@@ -173,8 +174,14 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
           rel="noopener noreferrer" 
           className="group flex flex-col items-center gap-3"
         >
-          <div className="w-12 h-12 rounded-full border-2 border-white/10 group-hover:border-[#c8ff00] transition-all overflow-hidden shadow-2xl">
-            <img src="/zenvic.png" alt="Zenvic" className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" />
+          <div className="w-12 h-12 rounded-full border-2 border-white/10 group-hover:border-[#c8ff00] transition-all overflow-hidden shadow-2xl bg-[#0e1016]">
+            <Image 
+              src="/zenvic.png" 
+              alt="Zenvic" 
+              width={48} 
+              height={48} 
+              className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" 
+            />
           </div>
           <span className="font-unbounded text-[10px] tracking-[6px] uppercase group-hover:text-[#c8ff00] transition-colors">Built by Zenvic</span>
         </a>
