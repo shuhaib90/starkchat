@@ -19,6 +19,9 @@ export const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co', 
   supabaseAnonKey || 'placeholder',
   {
+    global: {
+      headers: { 'x-application-name': 'starkchat-prod' }
+    },
     realtime: {
       params: {
         eventsPerSecond: 20,
