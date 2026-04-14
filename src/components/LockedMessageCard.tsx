@@ -86,6 +86,16 @@ export const LockedMessageCard = React.memo(function LockedMessageCard({ message
           // 3. Decrypt immediately
           const decrypted = await decryptText(message.encrypted_content);
           setUnlockedContent(decrypted);
+
+          // [DUAL-SYNC] Broadcast the unlock to the peer instantly
+          const updatedMsg = { ...message, is_unlocked: true, status: "accepted", tx_hash: result.transactionHash };
+          const me = normalizeAddress(address);
+          const them = normalizeAddress(message.sender_address === me ? message.receiver_address : message.sender_address);
+          const sharedTopic = [me, them].sort().join("-").slice(0, 100);
+          const activeChannel = supabase.getChannels().find(c => c.topic === `realtime:chat:${sharedTopic}`);
+          if (activeChannel) {
+            activeChannel.send({ type: 'broadcast', event: 'message_update', payload: updatedMsg });
+          }
         }
       } else {
         if (result.isRateLimit) {
