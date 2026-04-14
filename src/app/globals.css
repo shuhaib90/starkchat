@@ -1,7 +1,7 @@
-@import "tailwindcss";
-
 /* Typography Imports */
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Fira+Code:wght@300..700&family=Unbounded:wght@200..900&display=swap');
+
+@import "tailwindcss";
 
 :root {
   --void: #06070a;
