@@ -31,20 +31,45 @@ export default function Home() {
       
       {/* Navbar Overlay - Brutalist Style */}
       <header className="flex justify-between items-center w-full max-w-6xl mx-auto h-20 bg-[#0e1016]/80 backdrop-blur-xl border-2 border-white/10 shadow-[8px_8px_0px_#06070a] rounded-lg px-6 sm:px-8 mb-12 z-50 shrink-0">
-        <button 
-          onClick={() => setShowLanding(!showLanding)}
-          className="flex items-center gap-4 hover:opacity-80 transition-all active:scale-95"
-        >
-          <div className="p-2.5 bg-[#c8ff00] rounded-md shadow-[4px_4px_0px_#06070a] border border-black/10">
-            <Zap className="w-6 h-6 text-black fill-black" />
-          </div>
-          <div className="text-left">
-            <h1 className="text-2xl font-bebas tracking-tighter text-white leading-none">
-              StarkChat
-            </h1>
-            <p className="text-[9px] font-unbounded text-[#c8ff00] tracking-[2px] uppercase mt-1">Node_Signal.01</p>
-          </div>
-        </button>
+        <div className="flex items-center gap-6">
+          <a 
+            href="https://x.com/zenvic00" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="group relative transition-all active:scale-90 hidden xs:block"
+          >
+            <div className="w-10 h-10 rounded-full border-2 border-[#c8ff00]/40 overflow-hidden shadow-[0_0_15px_rgba(200,255,0,0.2)] group-hover:border-[#c8ff00] transition-all">
+              <img src="/zenvic.png" alt="Zenvic" className="w-full h-full object-cover grayscale-[0.5] group-hover:grayscale-0 transition-all" />
+            </div>
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-[#c8ff00] rounded-full border-2 border-[#0e1016] animate-pulse" />
+          </a>
+          
+          <button 
+            onClick={() => setShowLanding(!showLanding)}
+            className="flex items-center gap-4 hover:opacity-80 transition-all active:scale-95"
+          >
+            <div className="p-2.5 bg-[#c8ff00] rounded-md shadow-[4px_4px_0px_#06070a] border border-black/10">
+              <Zap className="w-6 h-6 text-black fill-black" />
+            </div>
+            <div className="text-left">
+              <h1 className="text-2xl font-bebas tracking-tighter text-white leading-none">
+                StarkChat
+              </h1>
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-[9px] font-unbounded text-[#c8ff00] tracking-[2px] uppercase">Node_Signal.01</p>
+                <span className="text-white/20 text-[9px]">//</span>
+                <a 
+                  href="https://x.com/zenvic00" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-[9px] font-unbounded text-[#0af0ff] hover:text-[#c8ff00] tracking-[2px] uppercase transition-colors"
+                >
+                  Built by Zenvic
+                </a>
+              </div>
+            </div>
+          </button>
+        </div>
         
         <ConnectWalletButton />
       </header>

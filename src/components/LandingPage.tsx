@@ -165,6 +165,20 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
           <span className="font-bebas text-3xl tracking-tighter text-white group-hover:text-[#ff2dff] transition-colors">TELEGRAM_VOID</span>
         </a>
       </section>
+      
+      <div className="mt-20 flex flex-col items-center gap-4 opacity-40 hover:opacity-100 transition-opacity duration-500">
+        <a 
+          href="https://x.com/zenvic00" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="group flex flex-col items-center gap-3"
+        >
+          <div className="w-12 h-12 rounded-full border-2 border-white/10 group-hover:border-[#c8ff00] transition-all overflow-hidden shadow-2xl">
+            <img src="/zenvic.png" alt="Zenvic" className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" />
+          </div>
+          <span className="font-unbounded text-[10px] tracking-[6px] uppercase group-hover:text-[#c8ff00] transition-colors">Built by Zenvic</span>
+        </a>
+      </div>
     </div>
   );
 }
