@@ -73,9 +73,12 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
     markMessagesAsRead();
 
     // [DUAL-SYNC] Shared alphabetical channel
+    // [DUAL-SYNC] Create a shared channel name for both users
     const me = normalizeAddress(address);
     const them = normalizeAddress(receiverAddress);
-    const sharedTopic = [me, them].sort().join("-").slice(0, 100);
+    // STABLE SORT: Ensure the channel name is identical for both parties
+    const participants = [me, them].sort((a, b) => a.localeCompare(b));
+    const sharedTopic = participants.join("-").slice(0, 100); 
 
     const channel = supabase
       .channel(`chat:${sharedTopic}`)
@@ -138,8 +141,12 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
         };
         setMessages((prev) => prev.map(m => m.id === msg.id ? msg : m));
       })
-      .subscribe((status) => {
+      .subscribe((status, err) => {
         console.log(`[Dual-Sync Status] ${status} for ${sharedTopic}`);
+        if (err) {
+          console.error(`[Realtime Error] Connection failed:`, err.message);
+          showDiagnostic(`Realtime Signal Lost: ${err.message}`, "warning");
+        }
       });
 
     return () => {
