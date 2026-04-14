@@ -10,6 +10,9 @@ const getSupabaseConfig = () => {
     console.log(`[Diagnostic] Supabase Init - Domain: ${window.location.hostname}`);
     console.log(`[Diagnostic] Supabase Init - Project Ref: ${projectRef || "UNKNOWN"}`);
     console.log(`[Diagnostic] Supabase Init - Key Present: ${key ? "YES" : "NO"}`);
+    if (key) {
+      console.log(`[Diagnostic] Key Signature: ${key.length} chars | ${key.substring(0, 5)}...${key.substring(key.length - 5)}`);
+    }
   }
 
   return { url, key };
