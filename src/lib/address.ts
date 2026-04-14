@@ -8,17 +8,16 @@ export function normalizeAddress(address: string | null | undefined): string {
   
   let addr = address.toLowerCase().trim();
   
-  // Ensure 0x prefix
-  if (!addr.startsWith("0x")) {
-    addr = "0x" + addr;
+  // Remove 0x prefix if present for uniform padding logic
+  if (addr.startsWith("0x")) {
+    addr = addr.substring(2);
   }
   
-  // Note: We don't necessarily pad to 64 chars here because different wallets
-  // and starknet.js versions use different lengths, and 'ilike' in Supabase
-  // handles slight variations if used carefully. However, normalization to 
-  // lowercase is the most critical step for the '.or' filter.
+  // Pad the hex part to 64 characters
+  addr = addr.padStart(64, "0");
   
-  return addr;
+  // Return with 0x prefix
+  return "0x" + addr;
 }
 
 /**
