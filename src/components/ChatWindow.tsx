@@ -25,7 +25,10 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [isLockModalOpen, setIsLockModalOpen] = useState(false);
+  const [realtimeStatus, setRealtimeStatus] = useState<string>("CONNECTING...");
+  const [activeChannelId, setActiveChannelId] = useState<string>("");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const channelRef = useRef<any>(null);
 
   // Helper functions defined inside to access state/props
   const markMessagesAsRead = async () => {
@@ -143,14 +146,20 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
       })
       .subscribe((status, err) => {
         console.log(`[Dual-Sync Status] ${status} for ${sharedTopic}`);
+        setRealtimeStatus(status.toUpperCase());
+        setActiveChannelId(sharedTopic);
         if (err) {
           console.error(`[Realtime Error] Connection failed:`, err.message);
           showDiagnostic(`Realtime Signal Lost: ${err.message}`, "warning");
+          setRealtimeStatus(`ERROR: ${err.message}`);
         }
       });
 
+    channelRef.current = channel;
+
     return () => {
       supabase.removeChannel(channel);
+      channelRef.current = null;
     };
   }, [address, receiverAddress]);
 
@@ -201,7 +210,7 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
       
       if (error) throw error;
       if (data) {
-        // [DUAL-SYNC] Replace optimistic and broadcast
+        // [DUAL-SYNC] Success - Replace optimistic and broadcast to peer
         const cleanMsg = {
           ...data,
           sender_address: normalizeAddress(data.sender_address),
@@ -209,9 +218,9 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
         };
         setMessages(prev => prev.map(m => m.id === tempId ? cleanMsg : m));
         
-        const sharedTopic = [me, them].sort().join("-").slice(0, 100);
-        const activeChannel = supabase.getChannels().find(c => c.topic === `realtime:chat:${sharedTopic}`);
+        const activeChannel = channelRef.current;
         if (activeChannel) {
+          console.log("[Dual-Sync] Broadcasting new message...");
           activeChannel.send({ type: 'broadcast', event: 'new_message', payload: cleanMsg });
         }
 
@@ -275,6 +284,20 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
 
   return (
     <div className="flex flex-col h-full bg-transparent relative group">
+      {/* Production Diagnostic Panel */}
+      <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center">
+        <div className="bg-black/80 backdrop-blur-md border border-white/20 rounded-full px-4 py-1 flex items-center gap-3">
+          <div className={`w-2 h-2 rounded-full animate-pulse ${realtimeStatus === 'SUBSCRIBED' ? 'bg-[#c8ff00]' : 'bg-red-500'}`} />
+          <span className="text-[10px] font-['DM_Mono'] text-white/60 tracking-widest uppercase">
+            STATUS: <span className={realtimeStatus === 'SUBSCRIBED' ? 'text-white' : 'text-red-400'}>{realtimeStatus}</span>
+          </span>
+          <div className="w-px h-3 bg-white/10" />
+          <span className="text-[10px] font-['DM_Mono'] text-white/40 truncate max-w-[150px]">
+            {activeChannelId || "NO_CHANNEL"}
+          </span>
+        </div>
+      </div>
+
       <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(var(--ink-border) 1px, transparent 0)', backgroundSize: '32px 32px' }} />
       <div className="flex-1 overflow-y-auto custom-scrollbar z-10 w-full pt-24 pb-2">
         <div className="max-w-6xl mx-auto w-full px-4 sm:px-12">
