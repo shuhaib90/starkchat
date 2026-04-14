@@ -37,6 +37,9 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
     const channel = supabase
       .channel(`messages-${address}-${receiverAddress}`)
       .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'messages' },
+        (payload: any) => {
           // [REALTIME_DIAGNOSTIC] Sanitize incoming payload
           const rawMsg = payload.new || payload.old;
           if (!rawMsg) return;
