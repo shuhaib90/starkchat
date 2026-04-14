@@ -12,7 +12,6 @@ import { LockedMessageCard } from "./LockedMessageCard";
 import { MessageInput } from "./MessageInput";
 import { Loader2, Terminal } from "lucide-react";
 import { normalizeAddress } from "@/lib/address";
-
 import { useWallet } from "./StarkzapProvider";
 
 interface ChatWindowProps {
@@ -28,76 +27,12 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
   const [isLockModalOpen, setIsLockModalOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!address) return; // Wait until current wallet is attached before fetching
-    fetchInitialMessages();
-    markMessagesAsRead();
-
-    // Subscribe to realtime updates on 'messages' table
-    const channel = supabase
-      .channel(`messages-${address}-${receiverAddress}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'messages' },
-        (payload: any) => {
-          // [REALTIME_DIAGNOSTIC] Sanitize incoming payload
-          const rawMsg = payload.new || payload.old;
-          if (!rawMsg) return;
-
-          const msg = {
-            ...rawMsg,
-            sender_address: normalizeAddress(rawMsg.sender_address),
-            receiver_address: normalizeAddress(rawMsg.receiver_address)
-          };
-          
-          if (!msg.sender_address || !msg.receiver_address) return;
-
-          const s = normalizeAddress(msg.sender_address);
-          const r = normalizeAddress(msg.receiver_address);
-          const me = normalizeAddress(address);
-          const them = normalizeAddress(receiverAddress);
-
-          const isRelevant = (s === me && r === them) || (s === them && r === me);
-
-          // [REALTIME_DIAGNOSTIC] Log every incoming relevant message
-          console.log(`[Realtime] Event: ${payload.eventType}, Relevant: ${isRelevant}`, { s, r, me, them });
-
-          if (!isRelevant) return;
-          
-          if (payload.eventType === 'INSERT') {
-            setMessages((prev) => {
-              // Prevent duplicate messages if optimistic update already added it
-              if (prev.some(m => m.id === msg.id)) return prev;
-              return [...prev, msg];
-            });
-            // Mark new incoming messages from them as read instantly
-            if (s === them) {
-              markMessagesAsRead();
-            }
-          } else if (payload.eventType === 'UPDATE') {
-            setMessages((prev) => 
-              prev.map(m => m.id === payload.new.id ? payload.new : m)
-            );
-          } else if (payload.eventType === 'DELETE') {
-            setMessages((prev) => prev.filter(m => m.id !== payload.old.id));
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log(`[Realtime] Subscription Status: ${status} for channel: messages-${address}-${receiverAddress}`);
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [address, receiverAddress]);
-
+  // Helper functions defined inside to access state/props
   const markMessagesAsRead = async () => {
     if (!address) return;
     const me = normalizeAddress(address);
     const them = normalizeAddress(receiverAddress);
 
-    // Update all unread messages from 'them' sent to 'me'
     await supabase
       .from('messages')
       .update({ is_read: true })
@@ -107,11 +42,6 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
         is_read: false 
       });
   };
-
-  // Auto-scroll to bottom
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
 
   const fetchInitialMessages = async () => {
     if (!address) return;
@@ -130,34 +60,118 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
       setMessages(data);
     } else if (error) {
       console.error("Fetch messages error:", error);
-      showDiagnostic(`Database connection error: ${error.message}. Ensure your credentials are set.`, "error");
+      showDiagnostic(`Database connection error: ${error.message}`, "error");
     }
     setIsLoading(false);
   };
-  
+
+  // Main Effect: Handles Fetching + Subscriptions
+  useEffect(() => {
+    if (!address) return;
+    
+    fetchInitialMessages();
+    markMessagesAsRead();
+
+    // [DUAL-SYNC] Shared alphabetical channel
+    const me = normalizeAddress(address);
+    const them = normalizeAddress(receiverAddress);
+    const sharedTopic = [me, them].sort().join("-").slice(0, 100);
+
+    const channel = supabase
+      .channel(`chat:${sharedTopic}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'messages' },
+        (payload: any) => {
+          const rawMsg = payload.new || payload.old;
+          if (!rawMsg) return;
+
+          const msg = {
+            ...rawMsg,
+            sender_address: normalizeAddress(rawMsg.sender_address),
+            receiver_address: normalizeAddress(rawMsg.receiver_address)
+          };
+
+          const s = normalizeAddress(msg.sender_address);
+          const r = normalizeAddress(msg.receiver_address);
+          const currentMe = normalizeAddress(address);
+          const currentThem = normalizeAddress(receiverAddress);
+
+          const isRelevant = (s === currentMe && r === currentThem) || (s === currentThem && r === currentMe);
+          if (!isRelevant) return;
+
+          console.log(`[Dual-Sync: DB] Event: ${payload.eventType}`, msg.id);
+
+          if (payload.eventType === 'INSERT') {
+            setMessages((prev) => {
+              if (prev.some(m => m.id === msg.id)) return prev;
+              const newMsgs = [...prev, msg];
+              return newMsgs.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+            });
+            if (s === currentThem) markMessagesAsRead();
+          } else if (payload.eventType === 'UPDATE') {
+            setMessages((prev) => prev.map(m => m.id === msg.id ? msg : m));
+          } else if (payload.eventType === 'DELETE') {
+            setMessages((prev) => prev.filter(m => m.id !== msg.id));
+          }
+        }
+      )
+      .on('broadcast', { event: 'new_message' }, ({ payload }) => {
+        console.log(`[Dual-Sync: Broadcast] Received`, payload.id);
+        const msg = {
+          ...payload,
+          sender_address: normalizeAddress(payload.sender_address),
+          receiver_address: normalizeAddress(payload.receiver_address)
+        };
+        setMessages((prev) => {
+          if (prev.some(m => m.id === msg.id)) return prev;
+          const newMsgs = [...prev, msg];
+          return newMsgs.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        });
+      })
+      .on('broadcast', { event: 'message_update' }, ({ payload }) => {
+        console.log(`[Dual-Sync: Broadcast Update] Received`, payload.id);
+        const msg = {
+          ...payload,
+          sender_address: normalizeAddress(payload.sender_address),
+          receiver_address: normalizeAddress(payload.receiver_address)
+        };
+        setMessages((prev) => prev.map(m => m.id === msg.id ? msg : m));
+      })
+      .subscribe((status) => {
+        console.log(`[Dual-Sync Status] ${status} for ${sharedTopic}`);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [address, receiverAddress]);
+
+  // Auto-scroll logic
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
   const handleDeleteMessage = React.useCallback(async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('messages')
-        .delete()
-        .eq('id', id);
-      
+      const { error } = await supabase.from('messages').delete().eq('id', id);
       if (error) throw error;
-      // Realtime listener handles the state update
     } catch (err) {
       console.error("[StarkChat] Message deletion failed:", err);
     }
-  }, [supabase]);
+  }, []);
 
   const handleSendText = async (content: string) => {
     if (!address) return;
     
-    // Create optimistic message
     const tempId = crypto.randomUUID();
+    const me = normalizeAddress(address);
+    const them = normalizeAddress(receiverAddress);
+    
     const optimisticMsg = {
       id: tempId,
-      sender_address: normalizeAddress(address),
-      receiver_address: normalizeAddress(receiverAddress),
+      sender_address: me,
+      receiver_address: them,
       content,
       type: "text",
       is_read: false,
@@ -165,38 +179,43 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
       status: 'sending'
     };
 
-    // Add to UI immediately
     setMessages(prev => [...prev, optimisticMsg]);
 
     try {
       const { data, error } = await supabase.from("messages").insert([
         {
-          sender_address: optimisticMsg.sender_address,
-          receiver_address: optimisticMsg.receiver_address,
+          sender_address: me,
+          receiver_address: them,
           content,
           type: "text",
           is_read: false
         },
       ]).select().single();
       
-      if (error) {
-        console.error("Error sending message:", error);
-        showDiagnostic(`Signal failed to transmit: ${error.message}`, "error");
-        // Remove optimistic message on failure
-        setMessages(prev => prev.filter(m => m.id !== tempId));
-      } else if (data) {
-        // Replace optimistic message with real message from DB
-        setMessages(prev => prev.map(m => m.id === tempId ? data : m));
+      if (error) throw error;
+      if (data) {
+        // [DUAL-SYNC] Replace optimistic and broadcast
+        const cleanMsg = {
+          ...data,
+          sender_address: normalizeAddress(data.sender_address),
+          receiver_address: normalizeAddress(data.receiver_address)
+        };
+        setMessages(prev => prev.map(m => m.id === tempId ? cleanMsg : m));
+        
+        const sharedTopic = [me, them].sort().join("-").slice(0, 100);
+        const activeChannel = supabase.getChannels().find(c => c.topic === `realtime:chat:${sharedTopic}`);
+        if (activeChannel) {
+          activeChannel.send({ type: 'broadcast', event: 'new_message', payload: cleanMsg });
+        }
       }
     } catch (err: any) {
-      console.error("Critical error sending message:", err);
-      showDiagnostic(`Critical error: ${err.message || "Network Error"}`, "error");
+      console.error("Error sending message:", err);
+      showDiagnostic(`Signal failed: ${err.message}`, "error");
       setMessages(prev => prev.filter(m => m.id !== tempId));
     }
   };
 
   const renderedMessages = useMemo(() => {
-    // Filter messages: Recipients should only see successful/accepted payments
     const filteredMessages = messages.filter(msg => {
       if (msg.type === 'payment') {
         const isReceiver = normalizeAddress(address || "") === normalizeAddress(msg.receiver_address);
@@ -236,10 +255,7 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
 
   return (
     <div className="flex flex-col h-full bg-transparent relative group">
-      {/* Background Grid - subtle overlay */}
       <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(var(--ink-border) 1px, transparent 0)', backgroundSize: '32px 32px' }} />
-
-      {/* Messages Area - Full Scrollable Height */}
       <div className="flex-1 overflow-y-auto custom-scrollbar z-10 w-full pt-24 pb-2">
         <div className="max-w-6xl mx-auto w-full px-4 sm:px-12">
           {isLoading ? (
@@ -259,13 +275,12 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
           ) : (
             <div className="flex flex-col gap-2 w-full transform-gpu">
               {renderedMessages}
-              <div ref={bottomRef} className="h-20" /> {/* Extra space for sticky input */}
+              <div ref={bottomRef} className="h-20" />
             </div>
           )}
         </div>
       </div>
 
-      {/* Sticky Bottom Input Bar */}
       <div className="sticky bottom-0 z-30 w-full mt-auto">
         <div className="max-w-6xl mx-auto w-full px-4 sm:px-8 pb-8">
           <div className="bg-[#0e1016]/40 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden">
