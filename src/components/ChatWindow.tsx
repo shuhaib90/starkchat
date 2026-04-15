@@ -157,8 +157,14 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
 
   // Auto-scroll logic
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (!isLoading && messages.length > 0) {
+      // Small timeout to ensure DOM has completed layout for dynamic cards
+      const timer = setTimeout(() => {
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [messages, isLoading]);
 
   const handleDeleteMessage = React.useCallback(async (id: string) => {
     try {
