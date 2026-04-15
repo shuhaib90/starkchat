@@ -138,14 +138,7 @@ export default function Home() {
         ) : (
           <div className="flex flex-col items-center">
             <LandingPage onEnter={() => setShowLanding(false)} />
-            {address && (
-              <button 
-                onClick={() => setShowLanding(false)}
-                className="mt-12 px-10 py-5 bg-[#c8ff00] text-black font-bebas text-2xl tracking-[4px] shadow-[8px_8px_0px_#06070a] hover:shadow-[12px_12px_0px_#06070a] hover:-translate-x-1 hover:-translate-y-1 transition-all flex items-center gap-4 group active:scale-95 mb-20"
-              >
-                RETURN_TO_INBOX <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-              </button>
-            )}
+          </div>
           </div>
         )}
       </div>
