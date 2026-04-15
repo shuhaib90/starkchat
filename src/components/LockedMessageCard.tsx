@@ -191,9 +191,29 @@ export const LockedMessageCard = React.memo(function LockedMessageCard({ message
                 <div className="flex items-center gap-2 mb-2 text-emerald-400 font-bebas tracking-widest text-base border-b border-emerald-500/20 pb-1 uppercase">
                   <Unlock className="w-4 h-4" /> DECRYPTED MESSAGE
                 </div>
-                <p className="text-sm">
-                  {unlockedContent || "DECRYPTING..."}
-                </p>
+                {unlockedContent?.includes('voice-messages') ? (
+                  <div className="mt-3">
+                    <span className="font-bebas tracking-widest text-[#0af0ff] text-xs opacity-80 uppercase mb-2 block font-bold">Signal: Voice_Memo_Decrypted</span>
+                    <audio controls src={unlockedContent} className="w-full h-10 outline-none shadow-lg" />
+                  </div>
+                ) : unlockedContent?.includes('chat-images') ? (
+                  <div className="mt-3 group cursor-zoom-in overflow-hidden rounded-sm border border-emerald-500/20">
+                    <img 
+                      src={unlockedContent} 
+                      alt="Unlocked media" 
+                      className="w-full h-auto max-h-[400px] object-contain bg-black/40"
+                      onClick={() => window.open(unlockedContent, '_blank')}
+                    />
+                    <div className="p-2 bg-emerald-500/10 flex justify-between items-center text-[8px] font-mono tracking-widest text-emerald-400">
+                      <span>ASSET_ID: {message.id.slice(0, 8)}</span>
+                      <span className="animate-pulse">DECRYPTED_LIVE</span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm">
+                    {unlockedContent || "DECRYPTING..."}
+                  </p>
+                )}
               </div>
             ) : (
               <div className="flex flex-col items-center text-center py-1">

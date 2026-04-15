@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import { Send, DollarSign, Lock, HandCoins, Terminal } from "lucide-react";
+import { VoiceRecorder } from "./VoiceRecorder";
+import { ImageUpload } from "./ImageUpload";
 
 interface MessageInputProps {
   receiverAddress: string;
@@ -9,6 +11,8 @@ interface MessageInputProps {
   onOpenRequestMoney: () => void;
   onOpenLockMessage: () => void;
   onSendText: (content: string) => void;
+  onSendVoice: (audioUrl: string) => void;
+  onSendImage: (imageUrl: string) => void;
 }
 
 export function MessageInput({ 
@@ -16,7 +20,9 @@ export function MessageInput({
   onOpenSendMoney, 
   onOpenRequestMoney, 
   onOpenLockMessage,
-  onSendText 
+  onSendText,
+  onSendVoice,
+  onSendImage
 }: MessageInputProps) {
   const [content, setContent] = useState("");
 
@@ -87,6 +93,10 @@ export function MessageInput({
           >
             <Lock className="w-3.5 h-3.5" /> LOCK
           </button>
+          
+          <div className="w-[1px] h-6 bg-white/10 mx-1 self-center" />
+          <ImageUpload onSendImage={onSendImage} />
+          <VoiceRecorder onSendVoice={onSendVoice} />
         </div>
       </form>
     </div>

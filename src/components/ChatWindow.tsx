@@ -236,6 +236,134 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
     }
   };
 
+  const handleSendVoice = async (audioUrl: string) => {
+    if (!address) return;
+    
+    const tempId = crypto.randomUUID();
+    const me = normalizeAddress(address);
+    const them = normalizeAddress(receiverAddress);
+    
+    const optimisticMsg = {
+      id: tempId,
+      sender_address: me,
+      receiver_address: them,
+      content: audioUrl,
+      type: "voice",
+      is_read: false,
+      created_at: new Date().toISOString(),
+      status: 'sending'
+    };
+
+    setMessages(prev => [...prev, optimisticMsg]);
+
+    try {
+      const { data, error } = await supabase.from("messages").insert([
+        {
+          sender_address: me,
+          receiver_address: them,
+          content: audioUrl,
+          type: "voice",
+          is_read: false
+        }
+      ]).select().single();
+      
+      if (error) throw error;
+      if (data) {
+        const cleanMsg = {
+          ...data,
+          sender_address: normalizeAddress(data.sender_address),
+          receiver_address: normalizeAddress(data.receiver_address)
+        };
+        setMessages(prev => prev.map(m => m.id === tempId ? cleanMsg : m));
+        
+        const activeChannel = channelRef.current;
+        if (activeChannel) {
+          activeChannel.send({ type: 'broadcast', event: 'new_message', payload: cleanMsg });
+        }
+
+        const userChannel = supabase.channel(`user:${them}`);
+        userChannel.subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await userChannel.send({
+              type: 'broadcast',
+              event: 'inbox_update',
+              payload: cleanMsg
+            });
+            supabase.removeChannel(userChannel);
+          }
+        });
+      }
+    } catch (err: any) {
+      console.error("Error sending voice message:", err);
+      showDiagnostic(`Signal failed: ${err.message}`, "error");
+      setMessages(prev => prev.filter(m => m.id !== tempId));
+    }
+  };
+
+  const handleSendImage = async (imageUrl: string) => {
+    if (!address) return;
+    
+    const tempId = crypto.randomUUID();
+    const me = normalizeAddress(address);
+    const them = normalizeAddress(receiverAddress);
+    
+    const optimisticMsg = {
+      id: tempId,
+      sender_address: me,
+      receiver_address: them,
+      content: imageUrl,
+      type: "image",
+      is_read: false,
+      created_at: new Date().toISOString(),
+      status: 'sending'
+    };
+
+    setMessages(prev => [...prev, optimisticMsg]);
+
+    try {
+      const { data, error } = await supabase.from("messages").insert([
+        {
+          sender_address: me,
+          receiver_address: them,
+          content: imageUrl,
+          type: "image",
+          is_read: false
+        }
+      ]).select().single();
+      
+      if (error) throw error;
+      if (data) {
+        const cleanMsg = {
+          ...data,
+          sender_address: normalizeAddress(data.sender_address),
+          receiver_address: normalizeAddress(data.receiver_address)
+        };
+        setMessages(prev => prev.map(m => m.id === tempId ? cleanMsg : m));
+        
+        const activeChannel = channelRef.current;
+        if (activeChannel) {
+          activeChannel.send({ type: 'broadcast', event: 'new_message', payload: cleanMsg });
+        }
+
+        const userChannel = supabase.channel(`user:${them}`);
+        userChannel.subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await userChannel.send({
+              type: 'broadcast',
+              event: 'inbox_update',
+              payload: cleanMsg
+            });
+            supabase.removeChannel(userChannel);
+          }
+        });
+      }
+    } catch (err: any) {
+      console.error("Error sending image message:", err);
+      showDiagnostic(`Signal failed: ${err.message}`, "error");
+      setMessages(prev => prev.filter(m => m.id !== tempId));
+    }
+  };
+
   const renderedMessages = useMemo(() => {
     const filteredMessages = messages.filter(msg => {
       if (msg.type === 'payment') {
@@ -264,7 +392,7 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
             </div>
           )}
           <div className="w-full">
-            {msg.type === "text" && <MessageBubble message={msg} onDelete={handleDeleteMessage} />}
+            {(msg.type === "text" || msg.type === "voice" || msg.type === "image") && <MessageBubble message={msg} onDelete={handleDeleteMessage} />}
             {msg.type === "payment" && <PaymentMessageCard message={msg} onDelete={handleDeleteMessage} />}
             {msg.type === "request" && <RequestMessageCard message={msg} onDelete={handleDeleteMessage} />}
             {msg.type === "locked" && <LockedMessageCard message={msg} onDelete={handleDeleteMessage} />}
@@ -311,6 +439,8 @@ export function ChatWindow({ receiverAddress }: ChatWindowProps) {
               onOpenRequestMoney={() => setIsRequestModalOpen(true)}
               onOpenLockMessage={() => setIsLockModalOpen(true)}
               onSendText={handleSendText}
+              onSendVoice={handleSendVoice}
+              onSendImage={handleSendImage}
             />
           </div>
         </div>

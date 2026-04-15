@@ -2,10 +2,13 @@
 
 import React, { useState } from "react";
 import { useWallet } from "./StarkzapProvider";
-import { Lock, X, Send, Loader2, ShieldCheck, Sparkles } from "lucide-react";
+import { Lock, X, Send, Loader2, ShieldCheck, Sparkles, Mic, Type, Image as ImageIcon } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { encryptText } from "@/lib/crypto";
 import { normalizeAddress } from "@/lib/address";
+import { VoiceRecorder } from "./VoiceRecorder";
+
+import { ImageUpload } from "./ImageUpload";
 
 interface SendLockedMessageModalProps {
   isOpen: boolean;
@@ -16,15 +19,29 @@ interface SendLockedMessageModalProps {
 export function SendLockedMessageModal({ isOpen, onClose, receiverAddress }: SendLockedMessageModalProps) {
   const { address, showDiagnostic } = useWallet();
   const [content, setContent] = useState("");
+  const [mode, setMode] = useState<"text" | "voice" | "image">("text");
+  const [voiceUrl, setVoiceUrl] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [price, setPrice] = useState("");
   const [token, setToken] = useState<"STRK" | "ETH">("STRK");
   const [isSending, setIsSending] = useState(false);
+
+  // Reset state on open/close
+  React.useEffect(() => {
+    if (isOpen) {
+      setContent("");
+      setVoiceUrl(null);
+      setImageUrl(null);
+      setPrice("");
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!address || !content.trim()) return;
+    const finalContent = mode === "text" ? content.trim() : (mode === "voice" ? voiceUrl : imageUrl);
+    if (!address || !finalContent) return;
     
     if (!receiverAddress.startsWith("0x") || isNaN(Number(price)) || Number(price) <= 0) {
       alert("Invalid address or price");
@@ -35,7 +52,7 @@ export function SendLockedMessageModal({ isOpen, onClose, receiverAddress }: Sen
       setIsSending(true);
 
       // 1. Encrypt Content Client-Side
-      const encrypted = await encryptText(content.trim());
+      const encrypted = await encryptText(finalContent);
 
       // 2. Store in Supabase
         const { error } = await supabase
@@ -105,19 +122,102 @@ export function SendLockedMessageModal({ isOpen, onClose, receiverAddress }: Sen
             </div>
           </div>
 
-          {/* Content TextArea */}
           <div className="space-y-3">
-            <label className="font-['DM_Mono'] text-[10px] text-white/30 uppercase tracking-[3px]">Secret_Transmission_Data</label>
-            <div className="relative bg-black/40 border-2 border-white/5 focus-within:border-magenta/40 transition-all rounded-sm overflow-hidden">
-              <textarea
-                placeholder="INPUT_RESTRICTED_DATA_STREAM..."
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="w-full bg-transparent p-5 text-[#f0ede8] font-['DM_Mono'] text-sm focus:outline-none placeholder:text-white/5 h-32 resize-none"
-                required
-              />
-              <div className="absolute bottom-2 right-2 text-[8px] font-unbounded text-white/10 uppercase tracking-widest">Client_Side_Encryption_Active</div>
+            <label className="font-['DM_Mono'] text-[10px] text-white/30 uppercase tracking-[3px]">Message_Type</label>
+            <div className="grid grid-cols-3 gap-2 p-1 bg-black/40 border-2 border-white/5 rounded-sm">
+              <button
+                type="button"
+                onClick={() => setMode("text")}
+                className={`flex items-center justify-center gap-2 py-2 font-bebas tracking-widest text-lg transition-all ${
+                  mode === "text" ? "bg-white text-black" : "text-white/40 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <Type className="w-4 h-4" /> TEXT
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("voice")}
+                className={`flex items-center justify-center gap-2 py-2 font-bebas tracking-widest text-lg transition-all ${
+                  mode === "voice" ? "bg-white text-black" : "text-white/40 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <Mic className="w-4 h-4" /> VOICE
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("image")}
+                className={`flex items-center justify-center gap-2 py-2 font-bebas tracking-widest text-lg transition-all ${
+                  mode === "image" ? "bg-white text-black" : "text-white/40 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <ImageIcon className="w-4 h-4" /> IMAGE
+              </button>
             </div>
+          </div>
+
+          {/* Content TextArea or Voice Recorder */}
+          <div className="space-y-3">
+            <label className="font-['DM_Mono'] text-[10px] text-white/30 uppercase tracking-[3px]">
+              {mode === "text" ? "Secret_Transmission_Data" : "Voice_Motive_Data"}
+            </label>
+            
+            {mode === "text" ? (
+              <div className="relative bg-black/40 border-2 border-white/5 focus-within:border-magenta/40 transition-all rounded-sm overflow-hidden">
+                <textarea
+                  placeholder="INPUT_RESTRICTED_DATA_STREAM..."
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  className="w-full bg-transparent p-5 text-[#f0ede8] font-['DM_Mono'] text-sm focus:outline-none placeholder:text-white/5 h-32 resize-none"
+                  required
+                />
+                <div className="absolute bottom-2 right-2 text-[8px] font-unbounded text-white/10 uppercase tracking-widest">Client_Side_Encryption_Active</div>
+              </div>
+            ) : mode === "voice" ? (
+              <div className="bg-black/40 border-2 border-white/5 p-6 rounded-sm flex flex-col items-center gap-4">
+                {voiceUrl ? (
+                  <div className="w-full space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bebas text-[#0af0ff] tracking-widest">RECORDING_READY</span>
+                      <button 
+                        type="button"
+                        onClick={() => setVoiceUrl(null)}
+                        className="text-[10px] text-red-400 hover:text-red-300 font-mono uppercase underline"
+                      >
+                        Delete & Retry
+                      </button>
+                    </div>
+                    <audio controls src={voiceUrl} className="w-full h-10 outline-none" />
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-3">
+                    <VoiceRecorder onSendVoice={setVoiceUrl} />
+                    <p className="text-[10px] font-mono text-white/20 uppercase tracking-widest text-center">
+                      RECORD_AUDIO_SIGNAL_FOR_VAULT
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="bg-black/40 border-2 border-white/5 p-2 rounded-sm flex flex-col items-center gap-4 min-h-[160px] justify-center">
+                {imageUrl ? (
+                  <div className="w-full relative group rounded-sm overflow-hidden aspect-video bg-black/60 border border-white/5">
+                    <img src={imageUrl} alt="Locked preview" className="w-full h-full object-contain" />
+                    <button 
+                      type="button"
+                      onClick={() => setImageUrl(null)}
+                      className="absolute top-2 right-2 p-1 bg-black/60 text-white/40 hover:text-white rounded-full transition-all"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                    <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
+                      <span className="font-bebas text-xs text-white tracking-widest animate-pulse">VAULT_READY_SIGNAL</span>
+                    </div>
+                  </div>
+                ) : (
+                  <ImageUpload onSendImage={(url) => setImageUrl(url)} variant="modal" />
+                )}
+              </div>
+            )}
           </div>
 
           {/* Price Input */}
