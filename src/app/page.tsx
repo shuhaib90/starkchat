@@ -139,7 +139,6 @@ export default function Home() {
           <div className="flex flex-col items-center">
             <LandingPage onEnter={() => setShowLanding(false)} />
           </div>
-          </div>
         )}
       </div>
     </main>
