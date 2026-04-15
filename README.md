@@ -1,36 +1,145 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🚀 StarkChat — Web3 Messaging + Payments + Unlocks
 
-## Getting Started
+StarkChat is a next-generation Web3 communication platform built on Starknet.
 
-First, run the development server:
+It enables users to chat, send crypto, share locked content, and interact using only their wallet — no usernames required.
+
+---
+
+## ✨ Features
+
+- 💬 Wallet-to-Wallet Chat (no signup)
+- 💸 Send & Receive Crypto (Starknet)
+- 🔒 Pay-to-Unlock Messages & Media
+- 🎤 Voice Messages (Supabase Storage)
+- 🖼️ Locked Image / Media Sharing
+- ⚡ Realtime Messaging (Supabase Realtime)
+- 🤖 Command-Based Agent (optional)
+
+---
+
+## 🧠 Tech Stack
+
+- Next.js (App Router)
+- TypeScript
+- Tailwind CSS
+- Supabase (Database + Realtime + Storage)
+- Starknet + Starkzap (wallet + payments)
+
+---
+
+## ⚙️ Getting Started
+
+1. Clone the repo
+
+```bash
+git clone https://github.com/shuhaib90/starkchat.git
+cd starkchat
+```
+
+---
+
+2. Install dependencies
+
+```bash
+npm install
+```
+
+---
+
+3. Setup environment variables
+
+Create ".env.local":
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_key
+```
+
+---
+
+4. Run development server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🔗 How it works
 
-## Learn More
+1. Connect wallet (Starknet)
+2. Start chat using wallet address
+3. Send:
+   - text
+   - voice
+   - crypto
+   - locked content
+4. Unlock content via payment
+5. Messages update in realtime
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🔐 Architecture
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Chat → Supabase Realtime
+- Storage → Supabase Storage
+- Payments → Starknet (Starkzap)
+- Identity → Wallet Address
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## ⚠️ Important Notes
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- No private keys are stored
+- Messages are off-chain (fast + scalable)
+- Payments are on-chain (secure)
+- **Note**: Braavos wallet transfers are currently experiencing issues on Mainnet. Please use Argent X or OKX wallet for transfers in the meantime.
+
+---
+
+## 🚀 Deployment
+
+Deploy easily using Vercel:
+
+```bash
+vercel
+```
+
+Make sure to add environment variables in Vercel dashboard.
+
+---
+
+## 🎯 Vision
+
+StarkChat aims to become a Web3 super app combining:
+
+- communication
+- payments
+- content monetization
+
+---
+
+## 🏆 Demo
+
+🏆 Demo: [https://starkchat-six.vercel.app/](https://starkchat-six.vercel.app/)
+
+---
+
+## 👨‍💻 Author
+
+Built by Zenvic
+
+---
+
+## ⭐ Future Plans
+
+- 👥 **Group Messaging**: Create decentralized chat rooms for multiple participants.
+- 🆔 **Starknet ID Support**: Integration with human-readable addresses (e.g., `user.stark`).
+- 🔐 **End-to-End Encryption**: Implementing E2EE for all off-chain message payloads.
+- 🎫 **Token-Gating**: Exclusive rooms accessible only to holders of specific NFTs or tokens.
+- 📱 **Mobile PWA**: Optimized progressive web app for a seamless mobile chat experience.
+
+---
