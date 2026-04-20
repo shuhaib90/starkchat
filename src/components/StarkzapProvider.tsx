@@ -30,7 +30,7 @@ export const ETH_TOKEN = ETH_TOKEN_ADDRESS;
 // FAILSAFE_METADATA: Guaranteed fallbacks to prevent "decimals" resolution errors
 const FAILSAFE_STRK = { address: STRK_TOKEN_ADDRESS, decimals: 18, symbol: "STRK" };
 const FAILSAFE_ETH = { address: ETH_TOKEN_ADDRESS, decimals: 18, symbol: "ETH" };
-const FAILSAFE_USDC = { address: "0x053c9125369c20044555a40107d0220648c58474612c30531b93af883d67bc7d", decimals: 6, symbol: "USDC" };
+const FAILSAFE_USDC = { address: "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8", decimals: 6, symbol: "USDC.e" };
 
 // Reliable RPC fallbacks - Prioritizing Private RPC if available
 const PRIVATE_RPC = process.env.NEXT_PUBLIC_STARKNET_RPC_URL;

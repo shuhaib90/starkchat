@@ -22,7 +22,8 @@ import { uint256 } from "starknet";
 const SUPPORTED_TOKENS = [
   { ...mainnetTokens.STRK, symbol: "STRK", name: "Starknet Token" },
   { ...mainnetTokens.ETH, symbol: "ETH", name: "Ethereum Pool" },
-  { ...mainnetTokens.USDC, symbol: "USDC", name: "Bridged USDC" },
+  { ...mainnetTokens.USDC_E, symbol: "USDC.e", name: "Bridged USDC" },
+  { ...mainnetTokens.USDC, symbol: "USDC", name: "Native USDC" },
 ];
 
 interface SwapTx {
