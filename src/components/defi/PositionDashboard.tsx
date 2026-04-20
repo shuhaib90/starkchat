@@ -15,7 +15,7 @@ export function PositionDashboard({
   totalBorrowUsd,
   healthFactor,
   isLoading = false
-}) {
+}: PositionDashboardProps) {
   const getHealthStatus = (hf: number | null) => {
     if (hf === null) return { label: "N/A", color: "text-white/20", icon: <Activity className="w-4 h-4" /> };
     if (hf > 2) return { label: "SAFE", color: "text-emerald-400", icon: <ShieldCheck className="w-4 h-4" /> };

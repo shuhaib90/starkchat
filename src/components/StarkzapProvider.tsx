@@ -9,9 +9,10 @@ import {
   AvnuSwapProvider, 
   EkuboSwapProvider, 
   Amount,
-  LendingClient,
   VesuLendingProvider,
-  mainnetTokens
+  LendingClient,
+  mainnetTokens,
+  fromAddress
 } from "starkzap";
 import { connect, disconnect } from "starknetkit";
 import { normalizeAddress } from "@/lib/address";
@@ -20,6 +21,7 @@ import { NetworkDiagnostic } from "./NetworkDiagnostic";
 // The STRK token address on starknet mainnet
 export const STRK_TOKEN_ADDRESS = "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d";
 export const ETH_TOKEN_ADDRESS = "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
+export const STAKING_MASTER = "0x05f42602685741697200445d4c88f117f3000570b57e7939130701083de083";
 
 // Aliases for the execution bridge
 export const STRK_TOKEN = STRK_TOKEN_ADDRESS;
@@ -100,7 +102,7 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
     // Initialize on mount with our robust provider
     const instance = new StarkZap({ 
       network: "mainnet",
-      provider: provider
+      rpcUrl: activeRpc
     });
     
     setSdk(instance);
@@ -144,39 +146,39 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
     // but overrides/adds the SDK-specific staking methods.
     const bridge = Object.assign(Object.create(normalizedAccount), {
       stake: async (pool: string, amount: any, token?: any) => {
-        const s = await Staking.fromPool(pool, sdkInstance.getProvider(), sdkInstance.getResolvedConfig().staking);
+        const s = await Staking.fromPool(fromAddress(pool), sdkInstance.getProvider(), sdkInstance.getResolvedConfig().staking);
         
         // UNIFIED_AMOUNT_PROTOCOL: Handle both raw numbers (Agent) and Amount objects (Dashboard)
         const tokenMeta = token || mainnetTokens?.STRK || FAILSAFE_STRK;
-        const parsedAmount = (amount && typeof amount === 'object' && 'baseValue' in amount)
+        const parsedAmount = (amount instanceof Amount)
           ? amount 
           : Amount.parse(amount.toString(), tokenMeta);
           
         const tx = await s.stake(normalizedAccount, parsedAmount);
-        return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.transaction_hash) };
+        return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.hash) };
       },
       nativeStake: async (pool: string, amount: any, token?: any) => {
         // Alias for the unified stake method to maintain agent compatibility
         return bridge.stake(pool, amount, token);
       },
       claimPoolRewards: async (pool: string) => {
-        const s = await Staking.fromPool(pool, sdkInstance.getProvider(), sdkInstance.getResolvedConfig().staking);
+        const s = await Staking.fromPool(fromAddress(pool), sdkInstance.getProvider(), sdkInstance.getResolvedConfig().staking);
         const tx = await s.claimRewards(normalizedAccount);
-        return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.transaction_hash) };
+        return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.hash) };
       },
       exitPoolIntent: async (pool: string, amount: any) => {
-        const s = await Staking.fromPool(pool, sdkInstance.getProvider(), sdkInstance.getResolvedConfig().staking);
+        const s = await Staking.fromPool(fromAddress(pool), sdkInstance.getProvider(), sdkInstance.getResolvedConfig().staking);
         const tx = await s.exitIntent(normalizedAccount, amount);
-        return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.transaction_hash) };
+        return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.hash) };
       },
       exitPool: async (pool: string) => {
-        const s = await Staking.fromPool(pool, sdkInstance.getProvider(), sdkInstance.getResolvedConfig().staking);
+        const s = await Staking.fromPool(fromAddress(pool), sdkInstance.getProvider(), sdkInstance.getResolvedConfig().staking);
         const tx = await s.exit(normalizedAccount);
-        return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.transaction_hash) };
+        return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.hash) };
       },
       getPoolPosition: async (pool: string) => {
         try {
-          const s = await Staking.fromPool(pool, sdkInstance.getProvider(), sdkInstance.getResolvedConfig().staking);
+          const s = await Staking.fromPool(fromAddress(pool), sdkInstance.getProvider(), sdkInstance.getResolvedConfig().staking);
           const pos = await s.getPosition(normalizedAccount);
           
           // PRECISION SYNC: Fetch real-time accrued rewards directly from Staking Master and Pool
@@ -207,10 +209,10 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
                 const totalReal = unclaimed + accrued;
                 
                 if (pos && pos.rewards) {
-                  pos.rewards.baseValue = totalReal.toString();
+                   pos.rewards = Amount.fromRaw(totalReal.toString(), pos.rewards.getDecimals());
                 }
               } else if (pos && pos.rewards) {
-                 pos.rewards.baseValue = unclaimed.toString();
+                 pos.rewards = Amount.fromRaw(unclaimed.toString(), pos.rewards.getDecimals());
               }
             }
           } catch (err) {
@@ -240,7 +242,7 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
            }
          ];
          const tx = await normalizedAccount.execute(calls);
-         return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.transaction_hash) };
+         return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.hash) };
       },
       getQuote: async (params: any) => {
         const avnu = new AvnuSwapProvider();
@@ -256,7 +258,7 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
         const chainId = sdkInstance.getResolvedConfig().chainId;
         const { calls } = await provider.prepareSwap({ ...params, chainId, takerAddress: normalizedAccount.address });
         const tx = await normalizedAccount.execute(calls);
-        return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.transaction_hash) };
+        return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.hash) };
       },
       balanceOf: async (token: any) => {
         try {
@@ -274,7 +276,7 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
           }
         ];
         const tx = await normalizedAccount.execute(calls);
-        return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.transaction_hash) };
+        return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.hash) };
       },
       // nativeStake is now unified with stake at the top of the bridge
       lend: async (token: any, amount: any) => {
@@ -285,7 +287,7 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
           chainId: ChainId.MAINNET,
           execute: async (calls: any[], options?: any) => {
             const res = await normalizedAccount.execute(calls, options);
-            return { transaction_hash: res.transaction_hash, wait: async () => sdkInstance.getProvider().waitForTransaction(res.transaction_hash) };
+            return { transaction_hash: res.hash, wait: async () => sdkInstance.getProvider().waitForTransaction(res.hash) };
           }
         };
         const client = new LendingClient(dynamicContext as any, new VesuLendingProvider());
@@ -300,7 +302,7 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
           token: tokenMeta, 
           amount: Amount.parse(amount.toString(), tokenMeta) 
         });
-        return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.transaction_hash) };
+        return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.hash) };
       },
       withdraw: async (token: any, amount: any) => {
         const dynamicContext = {
@@ -310,7 +312,7 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
           chainId: ChainId.MAINNET,
           execute: async (calls: any[], options?: any) => {
             const res = await normalizedAccount.execute(calls, options);
-            return { transaction_hash: res.transaction_hash, wait: async () => sdkInstance.getProvider().waitForTransaction(res.transaction_hash) };
+            return { transaction_hash: res.hash, wait: async () => sdkInstance.getProvider().waitForTransaction(res.hash) };
           }
         };
         const client = new LendingClient(dynamicContext as any, new VesuLendingProvider());
@@ -325,7 +327,7 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
           token: tokenMeta, 
           amount: Amount.parse(amount.toString(), tokenMeta) 
         });
-        return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.transaction_hash) };
+        return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.hash) };
       },
       _sdkProvider: sdkInstance.getProvider().nodeUrl
     });
@@ -427,13 +429,13 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
   const lendingContext = useMemo(() => {
     if (!wallet || !address) return null;
     return {
-      address: address,
+      address: fromAddress(address),
       getChainId: () => ChainId.MAINNET,
       getProvider: () => provider,
       chainId: ChainId.MAINNET,
       execute: async (calls: any[], options?: any) => {
         const res = await wallet.execute(calls, options);
-        return { transaction_hash: res.transaction_hash, wait: async () => provider.waitForTransaction(res.transaction_hash) };
+        return { transaction_hash: res.hash, wait: async () => provider.waitForTransaction(res.hash) };
       },
       preflight: async (options: any) => {
         return { fee_estimate: [], total_fee: 0n };

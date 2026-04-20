@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useWallet } from "@/components/StarkzapProvider";
-import { LendingClient, VesuLendingProvider, Amount, mainnetTokens } from "starkzap";
+import { LendingClient, VesuLendingProvider, Amount, mainnetTokens, fromAddress } from "starkzap";
 import { 
   RefreshCw, 
   Info,
@@ -72,7 +72,7 @@ export function SimpleEarn() {
       
       const [marketStats, positions] = await Promise.all([
         lendingClient.getMarkets(),
-        lendingClient.getPositions({ user: address })
+        lendingClient.getPositions({ user: fromAddress(address) })
       ]);
 
       const tokenList = [
@@ -86,7 +86,7 @@ export function SimpleEarn() {
         const matchingMarkets = marketStats.filter(m => m.asset.address === token.address && m.poolAddress === VESU_PRIME_POOL);
         const market = matchingMarkets.length > 0 ? matchingMarkets[0] : null;
         
-        const rawGrossApy = market?.stats?.supplyApy ? (Number(market.stats.supplyApy.baseValue) / Math.pow(10, market.stats.supplyApy.decimals)) : 0;
+        const rawGrossApy = market?.stats?.supplyApy ? Number(market.stats.supplyApy.toUnit()) : 0;
         
         // Dynamic protocol Reserve Factor mapping for Vesu Lite
         // Vesu Prime typically applies a flat 20% Reserve Factor across most assets including USDC
@@ -95,11 +95,11 @@ export function SimpleEarn() {
         
         const apy = (rawGrossApy * feeMultiplier * 100).toFixed(2);
         
-        const borrowApy = market?.stats?.borrowApr ? ((Number(market.stats.borrowApr.baseValue) / Math.pow(10, market.stats.borrowApr.decimals)) * 100).toFixed(2) : "0.00";
-        const mSupplyNum = market?.stats?.totalSupplied ? (Number(market.stats.totalSupplied.baseValue) / Math.pow(10, market.stats.totalSupplied.decimals)) : 0;
+        const borrowApy = market?.stats?.borrowApr ? (Number(market.stats.borrowApr.toUnit()) * 100).toFixed(2) : "0.00";
+        const mSupplyNum = market?.stats?.totalSupplied ? Number(market.stats.totalSupplied.toUnit()) : 0;
         // Increase precision for smaller pools (like ETH) to 4 decimals to ensure 'Total Supplied' is accurate
         const mSupply = mSupplyNum > 10000 ? mSupplyNum.toLocaleString('en-US', { maximumFractionDigits: 0 }) : mSupplyNum.toLocaleString('en-US', { maximumFractionDigits: 4 });
-        const mUtil = market?.stats?.utilization ? ((Number(market.stats.utilization.baseValue) / Math.pow(10, market.stats.utilization.decimals)) * 100).toFixed(2) : "0.00";
+        const mUtil = market?.stats?.utilization ? (Number(market.stats.utilization.toUnit()) * 100).toFixed(2) : "0.00";
 
         const decimalsToDisplay = token.symbol === "ETH" ? 6 : 4;
         const pos = positions.find(p => p.collateral.token.address === token.address && p.type === "earn");

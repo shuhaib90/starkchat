@@ -5,7 +5,8 @@ import { useWallet } from "@/components/StarkzapProvider";
 import { 
   Amount, 
   mainnetTokens, 
-  mainnetValidators
+  mainnetValidators,
+  fromAddress
 } from "starkzap";
 import { 
   Zap, 
@@ -31,10 +32,11 @@ interface ValidatorPool {
   userPosition?: any;
   poolContract?: string;
   apr: number;
+  isVerified: boolean;
 }
 
 export function StakingHub() {
-  const { sdk, wallet, address, showDiagnostic } = useWallet();
+  const { sdk, wallet, address, showDiagnostic, connectWallet } = useWallet();
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [validators, setValidators] = useState<ValidatorPool[]>([]);
@@ -111,9 +113,9 @@ export function StakingHub() {
         if (selectedValidator) break;
         
         const chunk = vList.slice(i, i + CHUNK_SIZE);
-        const results = await Promise.all(chunk.map(async (v) => {
+        const results = await Promise.all(chunk.map(async (v): Promise<ValidatorPool | null> => {
           try {
-            const pools = await sdk.getStakerPools(v.stakerAddress);
+            const pools = await sdk.getStakerPools(fromAddress(v.stakerAddress));
             if (!pools || pools.length === 0) return null;
             
             const strkPool = pools.find((p: any) => p.token.symbol === "STRK");
@@ -129,8 +131,8 @@ export function StakingHub() {
             }
 
             const isElite = ELITE_VALIDATORS.includes(v.stakerAddress);
-            const hasPosition = userPos && BigInt(userPos.staked?.baseValue || 0) > 0n;
-            const hasUnpooling = userPos && BigInt(userPos.unpooling?.baseValue || 0) > 0n;
+            const hasPosition = userPos && BigInt(userPos.staked?.toBase() || 0) > 0n;
+            const hasUnpooling = userPos && BigInt(userPos.unpooling?.toBase() || 0) > 0n;
 
             // Starknet Native Staking APR (Baseline April 2026: 8.35%)
             // Net APR = Protocol_APR * (1 - commission / 100)
@@ -152,7 +154,7 @@ export function StakingHub() {
               userPosition: userPos,
               isVerified: isElite,
               apr: netApr
-            };
+            } as ValidatorPool;
           } catch (err: any) {
              return null;
           }
@@ -201,11 +203,11 @@ export function StakingHub() {
   }, [fetchStakingData, selectedValidator]);
 
   const activeStakes = useMemo(() => {
-    return validators.filter(v => v.userPosition && v.userPosition.staked && BigInt(v.userPosition.staked.baseValue || 0) > 0n);
+    return validators.filter(v => v.userPosition && v.userPosition.staked && BigInt(v.userPosition.staked.toBase() || 0) > 0n);
   }, [validators]);
 
   const totalRewards = useMemo(() => {
-    return activeStakes.reduce((acc, curr) => acc + Number(curr.userPosition.rewards?.baseValue || 0), 0);
+    return activeStakes.reduce((acc, curr) => acc + Number(curr.userPosition.rewards?.toUnit() || 0), 0);
   }, [activeStakes]);
 
   const handleStake = async (validator: ValidatorPool) => {
@@ -216,8 +218,8 @@ export function StakingHub() {
       
       showDiagnostic(`INITIATING: Transmitting ${stakeAmount} STRK to ${validator.name}...`, "info");
       
-      const tx = await wallet.stake(validator.poolContract, amount);
-      showDiagnostic(`TRANSMISSION_LIVE: ${stakeAmount} STRK broadcast. Tracking ref: ${tx.transaction_hash.slice(0, 10)}...`, "info");
+      const tx = await wallet.stake(fromAddress(validator.poolContract as string), amount);
+      showDiagnostic(`TRANSMISSION_LIVE: ${stakeAmount} STRK broadcast. Tracking ref: ${tx.hash.slice(0, 10)}...`, "info");
       
       // Optimistic UI Update: handles both existing positions and first-time stakers
       setValidators(prev => prev.map(v => {
@@ -225,8 +227,8 @@ export function StakingHub() {
           return {
             ...v,
             userPosition: {
-              ...(v.userPosition || { rewards: { baseValue: "0" }, staked: { baseValue: "0", toFormatted: () => "" } }),
-              staked: { ...v.userPosition?.staked, baseValue: (BigInt(v.userPosition?.staked?.baseValue || 0) + amount.baseValue).toString() }
+              ...(v.userPosition || { rewards: { toBase: () => "0" }, staked: { toBase: () => "0", toFormatted: () => "" } }),
+              staked: { ...v.userPosition?.staked, toBase: () => (BigInt(v.userPosition?.staked?.toBase() || 0) + amount.toBase()).toString() }
             }
           };
         }
@@ -260,7 +262,7 @@ export function StakingHub() {
     if (!wallet) return;
     try {
       setIsProcessing(true);
-      const tx = await wallet.claimPoolRewards(pool);
+      const tx = await wallet.claimPoolRewards(fromAddress(pool));
       showDiagnostic("HARVESTING: Signature broadcast to Starknet...", "info");
       await tx.wait();
       showDiagnostic("SUCCESS: Rewards claimed to your wallet.", "info");
@@ -277,7 +279,7 @@ export function StakingHub() {
     try {
       setIsProcessing(true);
       // Construct multicall: claim -> approve -> stake rewards
-      const tx = await (wallet as any).restakePoolRewards(v.poolContract, v.userPosition.rewards.baseValue);
+      const tx = await (wallet as any).restakePoolRewards(fromAddress(v.poolContract as string), v.userPosition.rewards.toBase());
       showDiagnostic("RESTAKING: Re-investing yield via multicall...", "info");
       await tx.wait();
       showDiagnostic("SUCCESS: Rewards compounded into stake!", "info");
@@ -295,7 +297,7 @@ export function StakingHub() {
       setIsProcessing(true);
       const amount = Amount.parse(amountStr || "0", STRK);
       showDiagnostic("EXIT_INTENT: Starting cooldown sequence...", "info");
-      const tx = await wallet.exitPoolIntent(poolContract, amount);
+      const tx = await wallet.exitPoolIntent(fromAddress(poolContract), amount);
       showDiagnostic("BROADCAST: Withdrawal sequence initiated.", "info");
       setSelectedValidator(null);
       setIsProcessing(false);
@@ -315,7 +317,7 @@ export function StakingHub() {
     try {
       setIsProcessing(true);
       showDiagnostic("WITHDRAWAL: Retrieving tokens from pool...", "info");
-      const tx = await wallet.exitPool(poolContract);
+      const tx = await wallet.exitPool(fromAddress(poolContract));
       showDiagnostic("BROADCAST: Retrieval command sent.", "info");
       setSelectedValidator(null);
       setIsProcessing(false);
@@ -364,7 +366,7 @@ export function StakingHub() {
             <div className="space-y-2">
               <span className="text-[10px] font-unbounded text-[#c8ff00] tracking-[3px] uppercase">Active_Stake</span>
               <h2 className="text-5xl font-bebas tracking-tighter text-white">
-                {activeStakes.reduce((acc, curr) => acc + Number(curr.userPosition.staked.baseValue || 0) / 10**18, 0).toFixed(2)}
+                {activeStakes.reduce((acc, curr) => acc + Number(curr.userPosition.staked.toUnit() || 0), 0).toFixed(2)}
                 <span className="text-xl opacity-40 ml-2">STRK</span>
               </h2>
             </div>
@@ -380,7 +382,7 @@ export function StakingHub() {
             <div className="space-y-2">
               <span className="text-[10px] font-unbounded text-white/30 tracking-[3px] uppercase">Pending_Rewards</span>
               <h2 className="text-5xl font-bebas tracking-tighter text-[#0af0ff]">
-                {(totalRewards / 10**18).toFixed(6)}
+                {totalRewards.toFixed(6)}
                 <span className="text-xl opacity-40 ml-2">STRK</span>
               </h2>
             </div>
@@ -398,7 +400,7 @@ export function StakingHub() {
                 disabled={totalRewards === 0 || isProcessing}
                 onClick={async () => {
                   for (const s of activeStakes) {
-                    if (s.poolContract && BigInt(s.userPosition.rewards.baseValue || 0) > 0n) {
+                    if (s.poolContract && BigInt(s.userPosition.rewards.toBase() || 0) > 0n) {
                       await handleClaim(s.poolContract);
                     }
                   }
@@ -411,7 +413,7 @@ export function StakingHub() {
                 disabled={totalRewards === 0 || isProcessing}
                 onClick={async () => {
                   for (const s of activeStakes) {
-                    if (s.poolContract && BigInt(s.userPosition.rewards.baseValue || 0) > 0n) {
+                    if (s.poolContract && BigInt(s.userPosition.rewards.toBase() || 0) > 0n) {
                        await handleRestake(s);
                     }
                   }
@@ -449,17 +451,17 @@ export function StakingHub() {
              <AlertCircle className="w-12 h-12 text-white/10" />
              <div className="text-center space-y-2">
                 <p className="font-bebas text-2xl tracking-widest text-white/20 uppercase">
-                   {view === "positions" && !address ? "PLEASE_CONNECT_WALLET_TO_SYNC" : "NO_RECORDS_DETECTED"}
+                   {view === "my" && !address ? "PLEASE_CONNECT_WALLET_TO_SYNC" : "NO_RECORDS_DETECTED"}
                 </p>
                 <p className="font-unbounded text-[8px] text-white/10 tracking-widest max-w-[300px] mx-auto">
-                   {view === "positions" && !address 
+                   {view === "my" && !address 
                      ? "Authorized credentials are required to index your on-chain staking positions."
                      : "Check your network connection or try a protocol rescan if data fails to populate."
                    }
                 </p>
              </div>
              
-             {view === "positions" && !address ? (
+             {view === "my" && !address ? (
                <button 
                  onClick={connectWallet}
                  className="px-8 py-3 bg-[#c8ff00] text-black font-bebas tracking-tighter text-xl hover:scale-105 transition-all shadow-[0_0_20px_rgba(200,255,0,0.2)]"
@@ -491,7 +493,7 @@ export function StakingHub() {
           ).map((v) => (
             <div 
               key={v.stakerAddress}
-              className={`bg-[#0a0b0e] border p-6 hover:border-[#c8ff00]/40 transition-all group backdrop-blur-sm relative ${v.userPosition && BigInt(v.userPosition.staked?.baseValue || 0) > 0n ? 'border-[#c8ff00]/20' : v.isVerified ? 'border-[#0af0ff]/20' : 'border-white/5'}`}
+              className={`bg-[#0a0b0e] border p-6 hover:border-[#c8ff00]/40 transition-all group backdrop-blur-sm relative ${v.userPosition && BigInt(v.userPosition.staked?.toBase() || 0) > 0n ? 'border-[#c8ff00]/20' : v.isVerified ? 'border-[#0af0ff]/20' : 'border-white/5'}`}
             >
               {v.isVerified && (
                 <div className="absolute top-0 right-0 bg-[#0af0ff] text-black text-[7px] font-unbounded px-2 py-0.5 tracking-[1px] flex items-center gap-1 z-20">
@@ -523,15 +525,15 @@ export function StakingHub() {
                   <span className="font-mono text-xs opacity-60">{v.totalStaked}</span>
                 </div>
                 
-                {v.userPosition && BigInt(v.userPosition.staked?.baseValue || 0) > 0n && (
+                {v.userPosition && BigInt(v.userPosition.staked?.toBase() || 0) > 0n && (
                   <div className="bg-[#c8ff00]/5 border border-[#c8ff00]/10 p-3 flex justify-between items-center rounded-sm">
                      <div>
                         <p className="text-[8px] uppercase tracking-widest text-[#c8ff00]">You Staked</p>
-                        <p className="font-bebas text-lg text-white">{(Number(v.userPosition.staked.baseValue) / 10**18).toFixed(2)} <span className="text-xs opacity-40">STRK</span></p>
+                        <p className="font-bebas text-lg text-white">{Number(v.userPosition.staked.toUnit() || 0).toFixed(2)} <span className="text-xs opacity-40">STRK</span></p>
                      </div>
                      <div className="text-right">
                         <p className="text-[8px] uppercase tracking-widest text-[#0af0ff]">Earned</p>
-                        <p className="font-bebas text-lg text-[#0af0ff]">{(Number(v.userPosition.rewards.baseValue) / 10**18).toFixed(4)}</p>
+                        <p className="font-bebas text-lg text-[#0af0ff]">{Number(v.userPosition.rewards.toUnit() || 0).toFixed(4)}</p>
                      </div>
                   </div>
                 )}
@@ -543,7 +545,7 @@ export function StakingHub() {
                         <span className="text-[8px] uppercase tracking-widest">Withdrawal_Cooldown</span>
                      </div>
                      <div className="flex justify-between items-center">
-                        <p className="font-mono text-[10px] opacity-60">Locked: {(Number(v.userPosition.unpooling.baseValue) / 10**18).toFixed(2)} STRK</p>
+                        <p className="font-mono text-[10px] opacity-60">Locked: {Number(v.userPosition.unpooling.toUnit() || 0).toFixed(2)} STRK</p>
                         <p className="font-mono text-[10px] text-white">
                           {v.userPosition.unpoolTime < new Date() ? "READY" : formatDistanceToNow(v.userPosition.unpoolTime)}
                         </p>
@@ -559,7 +561,7 @@ export function StakingHub() {
                 >
                   MANAGE_STAKE
                 </button>
-                {v.userPosition && BigInt(v.userPosition.rewards?.baseValue || 0) > 0n && (
+                {v.userPosition && BigInt(v.userPosition.rewards?.toBase() || 0) > 0n && (
                   <button 
                     onClick={() => handleRestake(v)}
                     disabled={isProcessing}
@@ -646,19 +648,19 @@ export function StakingHub() {
                   )}
 
                  <div className="grid grid-cols-2 gap-4">
-                    <button 
+                     <button 
                       onClick={() => handleStake(selectedValidator)}
                       disabled={!stakeAmount || isProcessing}
                       className="h-16 bg-[#c8ff00] text-black font-bebas text-xl tracking-widest hover:bg-[#d8ff40] active:scale-95 transition-all disabled:opacity-20 flex items-center justify-center gap-3"
                     >
                        EXECUTE_STAKE <ChevronRight className="w-5 h-5" />
                     </button>
-                    {selectedValidator.userPosition && BigInt(selectedValidator.userPosition.staked?.baseValue || 0) > 0n && (
+                    {selectedValidator.userPosition && BigInt(selectedValidator.userPosition.staked?.toBase() || 0) > 0n && (
                       <button 
                         onClick={() => selectedValidator.poolContract && handleExitIntent(selectedValidator.poolContract, stakeAmount || "0")}
-                        disabled={isProcessing || (selectedValidator.userPosition?.unpooling && BigInt(selectedValidator.userPosition.unpooling.baseValue || 0) > 0n)}
+                        disabled={isProcessing || (selectedValidator.userPosition?.unpooling && BigInt(selectedValidator.userPosition.unpooling.toBase() || 0) > 0n)}
                         className={`h-16 border font-bebas text-xl tracking-widest transition-all flex items-center justify-center gap-3 ${
-                          (selectedValidator.userPosition?.unpooling && BigInt(selectedValidator.userPosition.unpooling.baseValue || 0) > 0n)
+                          (selectedValidator.userPosition?.unpooling && BigInt(selectedValidator.userPosition.unpooling.toBase() || 0) > 0n)
                           ? "bg-white/5 border-white/5 text-white/20 cursor-not-allowed"
                           : "bg-white/5 border-white/10 text-white hover:bg-red-500/20 hover:border-red-500/50 hover:text-red-400"
                         }`}
@@ -668,7 +670,7 @@ export function StakingHub() {
                     )}
                  </div>
                  
-                 {selectedValidator.userPosition?.unpooling && BigInt(selectedValidator.userPosition.unpooling.baseValue || 0) > 0n && (
+                 {selectedValidator.userPosition?.unpooling && BigInt(selectedValidator.userPosition.unpooling.toBase() || 0) > 0n && (
                    <div className="bg-[#f0a800]/10 border border-[#f0a800]/30 p-4 mb-4 rounded-sm flex items-start gap-3">
                       <AlertCircle className="w-4 h-4 text-[#f0a800] mt-0.5" />
                       <p className="text-[11px] text-[#f0a800] font-mono leading-tight">

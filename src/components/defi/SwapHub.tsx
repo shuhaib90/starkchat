@@ -148,8 +148,8 @@ export function SwapHub() {
         slippageBps: BigInt(slippage)
       });
       
-      setHistory(prev => prev.map(t => t.id === txId ? { ...t, hash: tx.transaction_hash } : t));
-      showDiagnostic(`BROADCAST: Swap sequence LIVE. Hash: ${tx.transaction_hash.slice(0, 10)}...`, "info");
+      setHistory(prev => prev.map(t => t.id === txId ? { ...t, hash: tx.hash } : t));
+      showDiagnostic(`BROADCAST: Swap sequence LIVE. Hash: ${tx.hash.slice(0, 10)}...`, "info");
       
       // Optmistic reset
       setAmountIn("");
@@ -157,7 +157,7 @@ export function SwapHub() {
       
       await tx.wait();
       setHistory(prev => prev.map(t => t.id === txId ? { ...t, status: 'completed' } : t));
-      showDiagnostic("SUCCESS: Tokens swapped on-chain.", "success");
+      showDiagnostic("SUCCESS: Tokens swapped on-chain.", "info");
     } catch (err: any) {
       setHistory(prev => prev.map(t => t.id === txId ? { ...t, status: 'failed' } : t));
       showDiagnostic(`SWAP_FAILED: ${err.message}`, "error");

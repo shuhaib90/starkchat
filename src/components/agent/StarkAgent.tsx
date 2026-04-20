@@ -22,7 +22,8 @@ import {
   mainnetTokens, 
   Staking, 
   LendingClient, 
-  VesuLendingProvider 
+  VesuLendingProvider,
+  fromAddress
 } from "starkzap";
 import { uint256 } from "starknet";
 
@@ -96,7 +97,7 @@ export function StarkAgent() {
       const symbols: ("STRK" | "ETH" | "USDC")[] = ["STRK", "ETH", "USDC"];
       const lendingClient = new LendingClient(lendingContext, new VesuLendingProvider());
       
-      const positions = await lendingClient.getPositions({ userAddress: address });
+      const positions = await lendingClient.getPositions({ user: fromAddress(address) });
       const results: any = { STRK: "0.0000", ETH: "0.0000", USDC: "0.0000" };
       
       // TRUTH_SOURCE: Use SDK addresses to ensure perfect matching
@@ -358,7 +359,7 @@ export function StarkAgent() {
           if (!market) throw new Error("MARKET_NOT_FOUND");
           
           // Net APY = Gross * 0.8 (Reserve Factor)
-          const rawGrossApy = market.stats?.supplyApy ? (Number(market.stats.supplyApy.baseValue) / Math.pow(10, market.stats.supplyApy.decimals)) : 0;
+          const rawGrossApy = market.stats?.supplyApy ? Number(market.stats.supplyApy.toUnit()) : 0;
           const liveApr = (rawGrossApy * 0.8 * 100).toFixed(2);
 
           const yearlyEarn = (amt * (Number(liveApr) / 100)).toFixed(2);
