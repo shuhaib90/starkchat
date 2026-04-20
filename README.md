@@ -1,8 +1,8 @@
-# 🚀 StarkChat — Web3 Messaging + Payments + Unlocks
+# 🚀 StarkHub — Unified Web3 Ecosystem (Messaging + DeFi + AI)
 
-StarkChat is a next-generation Web3 communication platform built on Starknet.
+StarkHub is a next-generation Web3 communication and financial platform built on Starknet.
 
-It enables users to chat, send crypto, share locked content, and interact using only their wallet — no usernames required.
+It enables users to chat, manage DeFi protocols, and interact with the **StarkAgent** cognitive terminal using only their wallet.
 
 ---
 
@@ -114,7 +114,7 @@ Make sure to add environment variables in Vercel dashboard.
 
 ## 🎯 Vision
 
-StarkChat aims to become a Web3 super app combining:
+StarkHub aims to become a Web3 super app combining:
 
 - communication
 - payments
@@ -124,7 +124,7 @@ StarkChat aims to become a Web3 super app combining:
 
 ## 🏆 Demo
 
-🏆 Demo: [https://starkchat-six.vercel.app/](https://starkchat-six.vercel.app/)
+🏆 Demo: [https://starkhub.vercel.app/](https://starkhub.vercel.app/)
 
 ---
 

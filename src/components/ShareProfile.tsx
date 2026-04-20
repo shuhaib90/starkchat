@@ -27,7 +27,7 @@ export function ShareProfile({ isOpen, onClose }: ShareProfileProps) {
     ? `${window.location.origin}/chat/${address}` 
     : "";
 
-  const shareText = `Connect with me on StarkChat: ${profileUrl}`;
+  const shareText = `Connect with me on StarkHub: ${profileUrl}`;
 
   const handleCopy = async () => {
     try {
@@ -48,7 +48,7 @@ export function ShareProfile({ isOpen, onClose }: ShareProfileProps) {
   };
 
   const shareTelegram = () => {
-    window.open(`https://t.me/share/url?url=${encodeURIComponent(profileUrl)}&text=${encodeURIComponent("Connect with me on StarkChat")}`, "_blank");
+    window.open(`https://t.me/share/url?url=${encodeURIComponent(profileUrl)}&text=${encodeURIComponent("Connect with me on StarkHub")}`, "_blank");
   };
 
   return (

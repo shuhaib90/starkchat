@@ -8,8 +8,8 @@ import { SignalLoader } from "@/components/SignalLoader";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "StarkChat - Web3 Chat & Payments",
-  description: "Real-time chat and Starknet payments integrated using Starkzap and Supabase.",
+  title: "StarkHub - Unified Web3 Gateway",
+  description: "Advanced Starknet DeFi interface, real-time messaging, and cognitive agent integration.",
 };
 
 export default function RootLayout({

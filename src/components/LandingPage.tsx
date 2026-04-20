@@ -12,7 +12,11 @@ import {
   TrendingUp,
   BarChart3,
   Mic,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Cpu,
+  ArrowRightLeft,
+  Landmark,
+  Coins
 } from "lucide-react";
 import { ConnectWalletButton } from "./ConnectWalletButton";
 import Link from "next/link";
@@ -149,6 +153,32 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
           >
             START CHAT <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
           </button>
+
+          <div className="flex flex-wrap gap-4">
+            <Link href="/agent">
+              <button className="px-6 py-5 bg-white/5 border-2 border-[#0af0ff]/20 text-[#0af0ff] font-bebas text-xl tracking-[2px] shadow-[6px_6px_0px_#06070a] hover:bg-[#0af0ff]/10 hover:border-[#0af0ff] hover:-translate-x-1 hover:-translate-y-1 transition-all flex items-center gap-3">
+                <Cpu className="w-5 h-5" /> STARKAGENT
+              </button>
+            </Link>
+
+            <Link href="/defi?tab=swap">
+              <button className="px-6 py-5 bg-white/5 border-2 border-[#c8ff00]/20 text-[#c8ff00] font-bebas text-xl tracking-[2px] shadow-[6px_6px_0px_#06070a] hover:bg-[#c8ff00]/10 hover:border-[#c8ff00] hover:-translate-x-1 hover:-translate-y-1 transition-all flex items-center gap-3">
+                <ArrowRightLeft className="w-5 h-5" /> SWAP
+              </button>
+            </Link>
+
+            <Link href="/defi?tab=lending">
+              <button className="px-6 py-5 bg-white/5 border-2 border-purple-500/20 text-purple-400 font-bebas text-xl tracking-[2px] shadow-[6px_6px_0px_#06070a] hover:bg-purple-500/10 hover:border-purple-500 hover:-translate-x-1 hover:-translate-y-1 transition-all flex items-center gap-3">
+                <Landmark className="w-5 h-5" /> LEND
+              </button>
+            </Link>
+
+            <Link href="/defi?tab=staking">
+              <button className="px-6 py-5 bg-white/5 border-2 border-orange-500/20 text-orange-400 font-bebas text-xl tracking-[2px] shadow-[6px_6px_0px_#06070a] hover:bg-orange-500/10 hover:border-orange-500 hover:-translate-x-1 hover:-translate-y-1 transition-all flex items-center gap-3">
+                <Coins className="w-5 h-5" /> STAKE
+              </button>
+            </Link>
+          </div>
         </div>
       </header>
 

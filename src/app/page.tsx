@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Zap, MessageSquare, ArrowRight, Terminal, BarChart3 } from "lucide-react";
+import { Zap, MessageSquare, ArrowRight, Terminal, BarChart3, Cpu, Coins, Landmark, ArrowRightLeft } from "lucide-react";
 import Image from "next/image";
 import { useWallet } from "@/components/StarkzapProvider";
 import { RecentChats } from "@/components/RecentChats";
@@ -62,7 +62,7 @@ export default function Home() {
             </div>
             <div className="text-left">
               <h1 className="text-2xl font-bebas tracking-tighter text-white leading-none">
-                StarkChat
+                StarkHub
               </h1>
               <div className="flex items-center gap-2 mt-1">
                 <p className="text-[9px] font-unbounded text-[#c8ff00] tracking-[2px] uppercase">Node_Signal.01</p>
@@ -82,13 +82,31 @@ export default function Home() {
         
         <div className="flex items-center gap-4">
           {address && (
-            <Link 
-              href="/dashboard"
-              className="hidden md:flex items-center gap-3 px-4 py-2 bg-white/5 border border-white/10 hover:border-[#0af0ff] hover:bg-[#0af0ff]/5 transition-all group"
-            >
-              <BarChart3 className="w-4 h-4 text-[#0af0ff]/60 group-hover:text-[#0af0ff]" />
-              <span className="font-bebas text-sm tracking-widest text-[#0af0ff]/60 group-hover:text-[#0af0ff]">Data_Hub</span>
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link 
+                href="/defi"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-[#c8ff00]/5 border border-[#c8ff00]/20 hover:border-[#c8ff00] hover:bg-[#c8ff00]/10 transition-all group"
+              >
+                <Zap className="w-4 h-4 text-[#c8ff00] group-hover:scale-110 transition-transform" />
+                <span className="font-bebas text-sm tracking-widest text-[#c8ff00]">Defi_Hub</span>
+              </Link>
+              
+              <Link 
+                href="/dashboard"
+                className="hidden sm:flex items-center gap-2 px-3 sm:px-4 py-2 bg-white/5 border border-white/10 hover:border-[#0af0ff] hover:bg-[#0af0ff]/5 transition-all group"
+              >
+                <BarChart3 className="w-4 h-4 text-[#0af0ff]/60 group-hover:text-[#0af0ff]" />
+                <span className="font-bebas text-sm tracking-widest text-[#0af0ff]/60 group-hover:text-[#0af0ff]">Data_Hub</span>
+              </Link>
+
+              <Link 
+                href="/agent"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-[#0af0ff]/5 border border-[#0af0ff]/20 hover:border-[#0af0ff] hover:bg-[#0af0ff]/10 transition-all group"
+              >
+                <Cpu className="w-4 h-4 text-[#0af0ff] group-hover:rotate-12 transition-transform" />
+                <span className="font-bebas text-sm tracking-widest text-[#0af0ff]">AI_Agent</span>
+              </Link>
+            </div>
           )}
           <ConnectWalletButton />
         </div>
@@ -132,7 +150,7 @@ export default function Home() {
                 </button>
               </div>
             </form>
-            
+
             <RecentChats />
           </div>
         ) : (

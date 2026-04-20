@@ -1,9 +1,18 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useMemo } from "react";
-import { StarkZap } from "starkzap";
-
-import { RpcProvider } from "starknet";
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from "react";
+import { RpcProvider, num, uint256 } from "starknet";
+import { 
+  StarkZap, 
+  ChainId, 
+  Staking, 
+  AvnuSwapProvider, 
+  EkuboSwapProvider, 
+  Amount,
+  LendingClient,
+  VesuLendingProvider,
+  mainnetTokens
+} from "starkzap";
 import { connect, disconnect } from "starknetkit";
 import { normalizeAddress } from "@/lib/address";
 import { NetworkDiagnostic } from "./NetworkDiagnostic";
@@ -12,14 +21,23 @@ import { NetworkDiagnostic } from "./NetworkDiagnostic";
 export const STRK_TOKEN_ADDRESS = "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d";
 export const ETH_TOKEN_ADDRESS = "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
 
-// Reliable RPC fallbacks
+// Aliases for the execution bridge
+export const STRK_TOKEN = STRK_TOKEN_ADDRESS;
+export const ETH_TOKEN = ETH_TOKEN_ADDRESS;
+
+// FAILSAFE_METADATA: Guaranteed fallbacks to prevent "decimals" resolution errors
+const FAILSAFE_STRK = { address: STRK_TOKEN_ADDRESS, decimals: 18, symbol: "STRK" };
+const FAILSAFE_ETH = { address: ETH_TOKEN_ADDRESS, decimals: 18, symbol: "ETH" };
+const FAILSAFE_USDC = { address: "0x053c9125369c20044555a40107d0220648c58474612c30531b93af883d67bc7d", decimals: 6, symbol: "USDC" };
+
+// Reliable RPC fallbacks - Prioritizing Private RPC if available
+const PRIVATE_RPC = process.env.NEXT_PUBLIC_STARKNET_RPC_URL;
 const FALLBACK_RPCS = [
-  "https://starknet-mainnet.public.blastapi.io",
-  "https://rpc.starknet.lava.build",
-  "https://starknet-mainnet.public.nethermind.io",
-  "https://free-openapi.starknet.io/rt/v1/mainnet", // OnFinality
+  PRIVATE_RPC,
+  "https://free-rpc.nethermind.io/mainnet-juno",
+  "https://starknet-mainnet.public.lava.network",
   "https://starknet-mainnet.g.allpotential.io"
-];
+].filter(Boolean) as string[];
 
 interface WalletContextType {
   sdk: any;
@@ -32,6 +50,7 @@ interface WalletContextType {
   connectorId: string | null;
   rotateRpc: () => void;
   showDiagnostic: (msg: string, type: 'warning' | 'error' | 'info') => void;
+  lendingContext: any | null;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -42,6 +61,7 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
   const [address, setAddress] = useState<string | null>(null);
   const [connectorId, setConnectorId] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [activeRpc, setActiveRpc] = useState(PRIVATE_RPC || FALLBACK_RPCS[0]);
   const [rpcIndex, setRpcIndex] = useState(0);
   
   // Diagnostic State
@@ -50,30 +70,43 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
     message: "",
     type: "info"
   });
+
+  // STRICT_ENFORCEMENT: Lock to private RPC if defined
+  useEffect(() => {
+    if (PRIVATE_RPC) {
+      console.log("[Starknet_Uplink] STRICT_PRIVATE_LANE_ENFORCED:", PRIVATE_RPC.split('/').slice(0, 3).join('/'));
+      setActiveRpc(PRIVATE_RPC);
+    }
+  }, []);
   
   // Use a stable provider for non-wallet calls
-  const provider = useMemo(() => new RpcProvider({ 
-    nodeUrl: FALLBACK_RPCS[rpcIndex % FALLBACK_RPCS.length] 
-  }), [rpcIndex]);
+  const provider = useMemo(() => {
+    const url = activeRpc;
+    const isPrivate = url === PRIVATE_RPC;
+    console.log(`[Starknet_Uplink] ${isPrivate ? 'PRIVATE_LANE_ACTIVE' : 'FALLBACK_NODE_ACTIVE'}: ${url?.split('/')[2]}`);
+    return new RpcProvider({ nodeUrl: url });
+  }, [activeRpc]);
 
-  const rotateRpc = () => {
-    setRpcIndex(prev => prev + 1);
-    console.log(`[Starkzap] Rotated to node: ${FALLBACK_RPCS[(rpcIndex + 1) % FALLBACK_RPCS.length]}`);
-  };
+  const rotateRpc = useCallback(() => {
+  }, []);
 
-  const showDiagnostic = (message: string, type: 'warning' | 'error' | 'info' = 'info') => {
+  const showDiagnostic = useCallback((message: string, type: 'warning' | 'error' | 'info' = 'info') => {
     setDiagnostic({ isOpen: true, message, type });
     // Auto-close after 8 seconds
     setTimeout(() => setDiagnostic(prev => ({ ...prev, isOpen: false })), 8000);
-  };
+  }, []);
 
   useEffect(() => {
-    // Initialize SDK on mount
+    // Initialize on mount with our robust provider
     const instance = new StarkZap({ 
-      network: "mainnet" 
+      network: "mainnet",
+      provider: provider
     });
+    
     setSdk(instance);
+  }, [provider]);
 
+  useEffect(() => {
     // [DIAGNOSTIC] Check for critical Supabase environment variables
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -90,7 +123,246 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const connectWallet = async () => {
+  /**
+   * [EXECUTION_BRIDGE]
+   * Wraps a raw browser account (Argent/Braavos) in a bridge that implements 
+   * the SDK's high-level staking methods without needing a private key.
+   */
+  const createBrowserWallet = useMemo(() => (account: any, sdkInstance: any) => {
+    if (!account || !sdkInstance) return null;
+    
+    // Create a normalized account using a Proxy to preserve the prototype chain (methods like .execute)
+    // while ensuring the .address property is always returned as a 64-char padded Starknet address.
+    const normalizedAccount = new Proxy(account, {
+      get(target, prop, receiver) {
+        if (prop === 'address') return normalizeAddress(target.address);
+        return Reflect.get(target, prop, receiver);
+      }
+    });
+
+    // Create the bridge using Prototype Inheritance so it inherits ALL methods from the account instance
+    // but overrides/adds the SDK-specific staking methods.
+    const bridge = Object.assign(Object.create(normalizedAccount), {
+      stake: async (pool: string, amount: any, token?: any) => {
+        const s = await Staking.fromPool(pool, sdkInstance.getProvider(), sdkInstance.getResolvedConfig().staking);
+        
+        // UNIFIED_AMOUNT_PROTOCOL: Handle both raw numbers (Agent) and Amount objects (Dashboard)
+        const tokenMeta = token || mainnetTokens?.STRK || FAILSAFE_STRK;
+        const parsedAmount = (amount && typeof amount === 'object' && 'baseValue' in amount)
+          ? amount 
+          : Amount.parse(amount.toString(), tokenMeta);
+          
+        const tx = await s.stake(normalizedAccount, parsedAmount);
+        return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.transaction_hash) };
+      },
+      nativeStake: async (pool: string, amount: any, token?: any) => {
+        // Alias for the unified stake method to maintain agent compatibility
+        return bridge.stake(pool, amount, token);
+      },
+      claimPoolRewards: async (pool: string) => {
+        const s = await Staking.fromPool(pool, sdkInstance.getProvider(), sdkInstance.getResolvedConfig().staking);
+        const tx = await s.claimRewards(normalizedAccount);
+        return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.transaction_hash) };
+      },
+      exitPoolIntent: async (pool: string, amount: any) => {
+        const s = await Staking.fromPool(pool, sdkInstance.getProvider(), sdkInstance.getResolvedConfig().staking);
+        const tx = await s.exitIntent(normalizedAccount, amount);
+        return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.transaction_hash) };
+      },
+      exitPool: async (pool: string) => {
+        const s = await Staking.fromPool(pool, sdkInstance.getProvider(), sdkInstance.getResolvedConfig().staking);
+        const tx = await s.exit(normalizedAccount);
+        return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.transaction_hash) };
+      },
+      getPoolPosition: async (pool: string) => {
+        try {
+          const s = await Staking.fromPool(pool, sdkInstance.getProvider(), sdkInstance.getResolvedConfig().staking);
+          const pos = await s.getPosition(normalizedAccount);
+          
+          // PRECISION SYNC: Fetch real-time accrued rewards directly from Staking Master and Pool
+          try {
+            const [poolMemberInfo, stakerInfo] = await Promise.all([
+              sdkInstance.getProvider().callContract({
+                contractAddress: pool,
+                entrypoint: "get_pool_member_info_v1",
+                calldata: [normalizedAccount.address]
+              }),
+              sdkInstance.getProvider().callContract({
+                contractAddress: STAKING_MASTER,
+                entrypoint: "get_staker_info_v1",
+                calldata: [pool] // Pool address is the validator identity in Master
+              })
+            ]);
+
+            if (poolMemberInfo && stakerInfo) {
+              const unclaimed = uint256.uint256ToBN({ low: poolMemberInfo[1], high: poolMemberInfo[2] });
+              const amount = uint256.uint256ToBN({ low: poolMemberInfo[3], high: poolMemberInfo[4] });
+              const lastIndex = uint256.uint256ToBN({ low: poolMemberInfo[5], high: poolMemberInfo[6] });
+              const globalIndex = uint256.uint256ToBN({ low: stakerInfo[4], high: stakerInfo[5] });
+
+              if (globalIndex > lastIndex && amount > 0n) {
+                const INDEX_SCALE = 10n ** 12n; // Starknet Index Scale
+                const delta = globalIndex - lastIndex;
+                const accrued = (delta * amount) / INDEX_SCALE;
+                const totalReal = unclaimed + accrued;
+                
+                if (pos && pos.rewards) {
+                  pos.rewards.baseValue = totalReal.toString();
+                }
+              } else if (pos && pos.rewards) {
+                 pos.rewards.baseValue = unclaimed.toString();
+              }
+            }
+          } catch (err) {
+             console.log("[Starkzap] Accrued calculation failed, falling back to settled rewards.");
+          }
+          
+          return pos;
+        } catch (e) { return null; }
+      },
+      restakePoolRewards: async (pool: string, amountRaw: string) => {
+         // ATOMIC MULTICALL: Claim -> Approve -> Restake
+         const calls = [
+           {
+             contractAddress: pool,
+             entrypoint: "claim_rewards",
+             calldata: [normalizedAccount.address]
+           },
+           {
+             contractAddress: STRK_TOKEN,
+             entrypoint: "approve",
+             calldata: [pool, amountRaw, "0"]
+           },
+           {
+             contractAddress: pool,
+             entrypoint: "add_to_delegation_pool",
+             calldata: [normalizedAccount.address, amountRaw, "0"]
+           }
+         ];
+         const tx = await normalizedAccount.execute(calls);
+         return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.transaction_hash) };
+      },
+      getQuote: async (params: any) => {
+        const avnu = new AvnuSwapProvider();
+        const ekubo = new EkuboSwapProvider();
+        const provider = params.provider === 'ekubo' ? ekubo : avnu;
+        const chainId = sdkInstance.getResolvedConfig().chainId;
+        return provider.getQuote({ ...params, chainId });
+      },
+      swap: async (params: any) => {
+        const avnu = new AvnuSwapProvider();
+        const ekubo = new EkuboSwapProvider();
+        const provider = params.provider === 'ekubo' ? ekubo : avnu;
+        const chainId = sdkInstance.getResolvedConfig().chainId;
+        const { calls } = await provider.prepareSwap({ ...params, chainId, takerAddress: normalizedAccount.address });
+        const tx = await normalizedAccount.execute(calls);
+        return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.transaction_hash) };
+      },
+      balanceOf: async (token: any) => {
+        try {
+          return await sdkInstance.balanceOf(token, normalizedAccount.address);
+        } catch (e) {
+          return Amount.fromRaw(0n, token.decimals, token.symbol);
+        }
+      },
+      transfer: async (tokenAddress: string, recipient: string, amountRaw: string) => {
+        const calls = [
+          {
+            contractAddress: tokenAddress,
+            entrypoint: "transfer",
+            calldata: [recipient, amountRaw, "0"]
+          }
+        ];
+        const tx = await normalizedAccount.execute(calls);
+        return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.transaction_hash) };
+      },
+      // nativeStake is now unified with stake at the top of the bridge
+      lend: async (token: any, amount: any) => {
+        const dynamicContext = {
+          address: normalizedAccount.address,
+          getChainId: () => ChainId.MAINNET,
+          getProvider: () => sdkInstance.getProvider(),
+          chainId: ChainId.MAINNET,
+          execute: async (calls: any[], options?: any) => {
+            const res = await normalizedAccount.execute(calls, options);
+            return { transaction_hash: res.transaction_hash, wait: async () => sdkInstance.getProvider().waitForTransaction(res.transaction_hash) };
+          }
+        };
+        const client = new LendingClient(dynamicContext as any, new VesuLendingProvider());
+        
+        // Defensive token resolution
+        const tokenMeta = token || (typeof token === 'string' ? (mainnetTokens as any)[token] : null);
+        if (!tokenMeta?.decimals) {
+          throw new Error(`METADATA_MISSING: Cannot resolve decimals for lending.`);
+        }
+
+        const tx = await client.deposit({ 
+          token: tokenMeta, 
+          amount: Amount.parse(amount.toString(), tokenMeta) 
+        });
+        return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.transaction_hash) };
+      },
+      withdraw: async (token: any, amount: any) => {
+        const dynamicContext = {
+          address: normalizedAccount.address,
+          getChainId: () => ChainId.MAINNET,
+          getProvider: () => sdkInstance.getProvider(),
+          chainId: ChainId.MAINNET,
+          execute: async (calls: any[], options?: any) => {
+            const res = await normalizedAccount.execute(calls, options);
+            return { transaction_hash: res.transaction_hash, wait: async () => sdkInstance.getProvider().waitForTransaction(res.transaction_hash) };
+          }
+        };
+        const client = new LendingClient(dynamicContext as any, new VesuLendingProvider());
+        
+        // Defensive token resolution
+        const tokenMeta = token || (typeof token === 'string' ? (mainnetTokens as any)[token] : null);
+        if (!tokenMeta?.decimals) {
+          throw new Error(`METADATA_MISSING: Cannot resolve decimals for withdrawal.`);
+        }
+
+        const tx = await client.withdraw({ 
+          token: tokenMeta, 
+          amount: Amount.parse(amount.toString(), tokenMeta) 
+        });
+        return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.transaction_hash) };
+      },
+      _sdkProvider: sdkInstance.getProvider().nodeUrl
+    });
+    return bridge;
+  }, [rotateRpc, showDiagnostic]);
+
+  // [AUTO_WRAP] Detect raw accounts and upgrade to the Execution Bridge automatically
+  useEffect(() => {
+    if (wallet && sdk) {
+      const currentProviderUrl = sdk.getProvider().nodeUrl;
+      const isStale = wallet._sdkProvider && wallet._sdkProvider !== currentProviderUrl;
+      const notBridged = typeof wallet.stake !== 'function';
+
+      if (notBridged || isStale) {
+        console.log(`[Starkzap] ${isStale ? 'Refreshing' : 'Upgrading'} connection to Execution Bridge...`);
+        const bridgedWallet = createBrowserWallet(wallet, sdk);
+        if (bridgedWallet) {
+          setWallet(bridgedWallet);
+          showDiagnostic(isStale ? "RPC_ROTATED: Bridge re-synchronized." : "BRIDGE_ACTIVE: Staking controls enabled.", "info");
+        }
+      }
+    }
+  }, [wallet, sdk, createBrowserWallet, showDiagnostic]);
+
+  const disconnectWallet = useCallback(async () => {
+    try {
+      const { disconnect } = await import("starknetkit");
+      await disconnect();
+    } catch (error) {
+      console.error("Failed to disconnect wallet:", error);
+    }
+    setWallet(null);
+    setAddress(null);
+    setConnectorId(null);
+  }, []);
+
+  const connectWallet = useCallback(async () => {
     if (!sdk) return;
     try {
       setIsConnecting(true);
@@ -111,22 +383,15 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
       
       const rawWallet = result.wallet as any;
       if (rawWallet && result.connector) {
-        // Enforce mainnet check with robust ID matching
-        const chainId = result.connectorData?.chainId || await rawWallet.provider?.getChainId?.();
+        const chainId = await rawWallet.provider?.getChainId?.();
         const chainIdStr = chainId?.toString().toLowerCase();
         
-        // Starknet Mainnet IDs:
-        // - "sn_main" (literal)
-        // - "0x534e5f4d41494e" (hex)
-        // - "23448594291968334" (decimal)
-        const isMainnet = !chainId || // Fallback: if we can't find it, don't block
+        const isMainnet = !chainId || 
           chainIdStr === "sn_main" || 
           chainIdStr === "0x534e5f4d41494e" || 
           chainIdStr === "23448594291968334" ||
           chainIdStr.includes("main");
 
-        console.log(`[Starknet] Connected to chain: ${chainId} (${chainIdStr}), isMainnet: ${isMainnet}`);
-        
         if (!isMainnet) {
           showDiagnostic("WRONG_NETWORK: Please switch your wallet to Starknet Mainnet.", "warning");
           await disconnectWallet();
@@ -135,14 +400,21 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
 
         let account = result.account || rawWallet.account;
         
-        // If account isn't ready or throttled, we can try to re-init it with our provider
         if (!account && typeof result.connector.account === 'function') {
            account = await result.connector.account(provider);
         }
+
+        if (account) {
+          try {
+            const bridgedWallet = createBrowserWallet(account, sdk);
+            setWallet(bridgedWallet);
+            setAddress(normalizeAddress(account.address));
+          } catch (wrapErr) {
+            setWallet(account); 
+            setAddress(normalizeAddress(account.address));
+          }
+        }
         
-        setWallet(account);
-        const rawAddress = result.connectorData?.account || rawWallet.selectedAddress || account?.address;
-        setAddress(normalizeAddress(rawAddress));
         setConnectorId(result.connector.id);
       }
     } catch (error) {
@@ -150,29 +422,42 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsConnecting(false);
     }
-  };
+  }, [sdk, provider, createBrowserWallet, disconnectWallet, showDiagnostic]);
 
-  const disconnectWallet = async () => {
-    try {
-      const { disconnect } = await import("starknetkit");
-      await disconnect();
-    } catch (error) {
-      console.error("Failed to disconnect wallet:", error);
-    }
-    setWallet(null);
-    setAddress(null);
-    setConnectorId(null);
-  };
+  const lendingContext = useMemo(() => {
+    if (!wallet || !address) return null;
+    return {
+      address: address,
+      getChainId: () => ChainId.MAINNET,
+      getProvider: () => provider,
+      chainId: ChainId.MAINNET,
+      execute: async (calls: any[], options?: any) => {
+        const res = await wallet.execute(calls, options);
+        return { transaction_hash: res.transaction_hash, wait: async () => provider.waitForTransaction(res.transaction_hash) };
+      },
+      preflight: async (options: any) => {
+        return { fee_estimate: [], total_fee: 0n };
+      }
+    };
+  }, [wallet, address, provider]);
+
+
+  const value = useMemo(() => ({ 
+    sdk, wallet, address, provider, 
+    connectWallet, disconnectWallet, isConnecting,
+    connectorId,
+    rotateRpc, showDiagnostic,
+    lendingContext
+  }), [
+    sdk, wallet, address, provider, 
+    connectWallet, disconnectWallet, isConnecting,
+    connectorId,
+    rotateRpc, showDiagnostic,
+    lendingContext
+  ]);
 
   return (
-    <WalletContext.Provider
-      value={{ 
-        sdk, wallet, address, provider, 
-        connectWallet, disconnectWallet, isConnecting,
-        connectorId,
-        rotateRpc, showDiagnostic
-      }}
-    >
+    <WalletContext.Provider value={value}>
       {children}
       {/* Visual Diagnostic Overlay */}
       {diagnostic.isOpen && (

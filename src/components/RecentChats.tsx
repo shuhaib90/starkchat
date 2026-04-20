@@ -114,9 +114,9 @@ export function RecentChats() {
 
       // Update local state for instant feedback
       setPreviews(prev => prev.filter(p => normalizeAddress(p.peerAddress) !== peer));
-      console.log(`[StarkChat] Purged conversation with ${peerAddress}`);
+      console.log(`[StarkHub] Purged conversation with ${peerAddress}`);
     } catch (err) {
-      console.error("[StarkChat] Deletion failed:", err);
+      console.error("[StarkHub] Deletion failed:", err);
       alert("Could not delete the conversation. Please try again.");
     }
   };
@@ -201,10 +201,18 @@ export function RecentChats() {
             {previews.map((preview, idx) => {
               const time = new Date(preview.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
               return (
-                <button
+                <div
                   key={idx}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => router.push(`/chat/${preview.peerAddress}`)}
-                  className="group relative w-full text-left p-5 transition-all duration-300 bg-white/[0.03] border border-white/5 hover:border-[#c8ff00]/30 hover:bg-[#c8ff00]/[0.02] hover:-translate-y-1 rounded-sm flex items-center gap-5 shadow-[4px_4px_0px_#06070a] hover:shadow-[12px_12px_24px_rgba(200,255,0,0.06)]"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      router.push(`/chat/${preview.peerAddress}`);
+                    }
+                  }}
+                  className="group relative w-full text-left p-5 transition-all duration-300 bg-white/[0.03] border border-white/5 hover:border-[#c8ff00]/30 hover:bg-[#c8ff00]/[0.02] hover:-translate-y-1 rounded-sm flex items-center gap-5 shadow-[4px_4px_0px_#06070a] hover:shadow-[12px_12px_24px_rgba(200,255,0,0.06)] cursor-pointer"
                 >
                   <div className="absolute left-0 top-0 bottom-0 w-1 bg-transparent group-hover:bg-[#c8ff00] transition-colors" />
                   
@@ -257,6 +265,7 @@ export function RecentChats() {
                   
                   <div className="flex items-center gap-3">
                     <button
+                      type="button"
                       onClick={(e) => handleDeleteChat(preview.peerAddress, e)}
                       className="p-2 opacity-0 group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-500 text-white/20 transition-all rounded-md border border-transparent hover:border-red-500/20"
                     >
@@ -266,7 +275,7 @@ export function RecentChats() {
                       <ArrowRight className="w-6 h-6 text-[#c8ff00]" />
                     </div>
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
