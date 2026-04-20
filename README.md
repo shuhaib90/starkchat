@@ -52,8 +52,16 @@ npm install
 Create ".env.local":
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=your_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_key
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Starknet Configuration
+# Recommended: Use Alchemy or a private RPC for stability
+NEXT_PUBLIC_STARKNET_RPC_URL=your_starknet_rpc_url
+
+# AI Agent Configuration
+NEXT_PUBLIC_GEMINI_KEY=your_gemini_api_key
 ```
 
 ---
