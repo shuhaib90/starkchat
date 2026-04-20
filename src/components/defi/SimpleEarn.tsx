@@ -168,14 +168,12 @@ export function SimpleEarn() {
     }
   }, [address, lendingClient, provider, showDiagnostic, rotateRpc, retryCount]);
 
-  const hasFetched = React.useRef(false);
-
   useEffect(() => {
-    if (!address || hasFetched.current) return;
+    if (!address || !lendingClient || !provider) return;
     
+    // FETCH_SYNC: Trigger initial scan and allow manual refreshes
     fetchData();
-    hasFetched.current = true;
-  }, [address]); // Only trigger when address changes
+  }, [address, lendingClient, provider]); // Re-sync if dependencies change
 
 
   const handleAction = async () => {
@@ -206,7 +204,12 @@ export function SimpleEarn() {
       }
 
       setAmount("");
-      await fetchData();
+      
+      // PROPAGATION_DELAY: Starknet indexers need a few seconds to catch up
+      setTimeout(() => {
+        fetchData();
+        showDiagnostic("UI_SYNC_COMPLETE: Market data and balances updated.", "info");
+      }, 3000);
     } catch (err: any) {
       console.error("[SimpleEarn] Action failed:", err);
       showDiagnostic(`TRANSACTION_ERROR: ${err.message || "Request failed"}`, "error");

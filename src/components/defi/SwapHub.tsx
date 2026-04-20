@@ -158,6 +158,12 @@ export function SwapHub() {
       await tx.wait();
       setHistory(prev => prev.map(t => t.id === txId ? { ...t, status: 'completed' } : t));
       showDiagnostic("SUCCESS: Tokens swapped on-chain.", "info");
+      
+      // PROPAGATION_DELAY: Starknet indexers need a few seconds to catch up
+      setTimeout(() => {
+        fetchBalance();
+        showDiagnostic("UI_SYNC_COMPLETE: Token balances updated.", "info");
+      }, 3000);
     } catch (err: any) {
       setHistory(prev => prev.map(t => t.id === txId ? { ...t, status: 'failed' } : t));
       showDiagnostic(`SWAP_FAILED: ${err.message}`, "error");

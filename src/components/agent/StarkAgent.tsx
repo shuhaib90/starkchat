@@ -649,7 +649,12 @@ export function StarkAgent() {
       
       await tx.wait();
       setHistory(prev => [...prev, { type: 'agent', content: "FINALIZATION_SUCCESS: Transaction reached 'Accepted on L2' state." }]);
-      fetchAgentBalances();
+      
+      // PROPAGATION_DELAY: Starknet indexers need a few seconds to catch up
+      setTimeout(() => {
+        fetchAgentBalances();
+        showDiagnostic("AGENT_SYNC_COMPLETE: Portfolio data updated.", "info");
+      }, 3000);
       
     } catch (err: any) {
       const msg = err.message || "UNKNOWN_ERROR";
