@@ -152,17 +152,15 @@ export function SimpleEarn() {
       return processedMarkets;
     } catch (err: any) {
       console.error("[SimpleEarn] Data fetch failed:", err);
-      const isNetworkError = err.message?.includes("fetch") || 
-                            err.message?.includes("Load") || 
-                            err.message?.includes("network") ||
-                            err.message?.includes("RpcError");
+      const isNetworkError = err.message?.includes("fetch") || err.message?.includes("Load") || err.message?.includes("network");
       
       if (isNetworkError && !isRetry && retryCount < 5) {
-        console.log(`[SimpleEarn] RPC or Network error detected. Attempting retry ${retryCount + 1}/5...`);
+        console.log(`[SimpleEarn] Network error detected. Attempting rotation ${retryCount + 1}/5...`);
+        rotateRpc();
         setRetryCount(prev => prev + 1);
         // Delay slightly before retrying
         return new Promise(resolve => {
-          setTimeout(() => resolve(fetchData(true)), 1200);
+          setTimeout(() => resolve(fetchData(true)), 800);
         });
       }
       
@@ -201,9 +199,7 @@ export function SimpleEarn() {
     
     // FETCH_SYNC: Trigger initial scan and allow manual refreshes
     fetchData();
-    const interval = setInterval(() => fetchData(), 30000);
-    return () => clearInterval(interval);
-  }, [address, lendingClient, provider]);
+  }, [address, lendingClient, provider]); // Re-sync if dependencies change
 
 
   const handleAction = async () => {
@@ -224,27 +220,19 @@ export function SimpleEarn() {
       if (mode === "deposit") {
         showDiagnostic(`DEPOSIT_INIT: Supplying ${amount} ${selectedToken.symbol} to earn interest...`, "info");
         const tx = await lendingClient.deposit({ token: tokenObj as any, amount: amountObj });
-        
-        // OPTIMISTIC_SYNC: Start polling immediately after broadcast
-        pollForSimpleEarnChange();
-        
-        tx.wait().then(() => {
-          showDiagnostic(`DEPOSIT_SUCCESS: ${amount} ${selectedToken.symbol} is now earning yield!`, "info");
-        }).catch((err: any) => console.warn("Deposit wait error:", err));
-
+        await tx.wait();
+        showDiagnostic(`DEPOSIT_SUCCESS: ${amount} ${selectedToken.symbol} is now earning yield!`, "info");
       } else {
         showDiagnostic(`WITHDRAW_INIT: Retrieving ${amount} ${selectedToken.symbol} from protocol...`, "info");
         const tx = await lendingClient.withdraw({ token: tokenObj as any, amount: amountObj });
-        
-        // OPTIMISTIC_SYNC: Start polling immediately after broadcast
-        pollForSimpleEarnChange();
-
-        tx.wait().then(() => {
-          showDiagnostic(`WITHDRAW_SUCCESS: ${amount} ${selectedToken.symbol} returned to wallet.`, "info");
-        }).catch((err: any) => console.warn("Withdraw wait error:", err));
+        await tx.wait();
+        showDiagnostic(`WITHDRAW_SUCCESS: ${amount} ${selectedToken.symbol} returned to wallet.`, "info");
       }
 
       setAmount("");
+      
+      // SMART_POLLING: Replacing static timeout with intelligent market state polling
+      pollForSimpleEarnChange();
     } catch (err: any) {
       console.error("[SimpleEarn] Action failed:", err);
       showDiagnostic(`TRANSACTION_ERROR: ${err.message || "Request failed"}`, "error");
@@ -570,7 +558,7 @@ export function SimpleEarn() {
                    Abort
                  </button>
                  <button 
-                   onClick={handleAction}
+                   onClick={() => handleAction()}
                    className="py-4 bg-[#c8ff00] text-black font-bebas text-xl tracking-widest hover:bg-[#d4ff33] transition-all uppercase"
                  >
                    Confirm

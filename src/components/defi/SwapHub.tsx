@@ -38,7 +38,7 @@ interface SwapTx {
 }
 
 export function SwapHub() {
-  const { wallet, showDiagnostic, connectWallet, address, provider, rotateRpc } = useWallet();
+  const { wallet, showDiagnostic, connectWallet, address, provider } = useWallet();
   const [tokenIn, setTokenIn] = useState(SUPPORTED_TOKENS[0]);
   const [tokenOut, setTokenOut] = useState(SUPPORTED_TOKENS[2]);
   const [amountIn, setAmountIn] = useState("");
@@ -100,24 +100,18 @@ export function SwapHub() {
       const formatted = (Number(raw) / Math.pow(10, tokenIn.decimals)).toFixed(4);
       setBalance(formatted);
       return formatted;
-    } catch (err: any) {
+    } catch (err) {
       console.error("Balance fetch failed", err);
-      
-      // ACTIVE_FAILOVER: Trigger node rotation if the RPC is struggling
-      if (err?.message?.includes("RpcError") || err?.message?.includes("failed to fetch")) {
-         // SILENT_LOG: Alchemy lane stuttering
-      }
-
       if (retryCount < 1) {
         return new Promise(resolve => {
-          setTimeout(() => resolve(fetchBalance(retryCount + 1)), 1500);
+          setTimeout(() => resolve(fetchBalance(retryCount + 1)), 1000);
         });
       }
       return "0.0000";
     } finally {
       setIsFetchingBalance(false);
     }
-  }, [address, provider, tokenIn, rotateRpc]);
+  }, [address, provider, tokenIn]);
 
   const pollForBalanceChange = async (oldBal: string) => {
     let attempts = 0;
@@ -184,25 +178,19 @@ export function SwapHub() {
         slippageBps: BigInt(slippage)
       });
       
-      const txHash = tx.transaction_hash || tx.hash || "";
-      setHistory(prev => prev.map(t => t.id === txId ? { ...t, hash: txHash } : t));
-      showDiagnostic(`BROADCAST: Swap sequence LIVE. Hash: ${txHash ? txHash.slice(0, 10) : "TRACKING"}...`, "info");
+      setHistory(prev => prev.map(t => t.id === txId ? { ...t, hash: tx.hash } : t));
+      showDiagnostic(`BROADCAST: Swap sequence LIVE. Hash: ${tx.hash.slice(0, 10)}...`, "info");
       
-      // OPTIMISTIC_SYNC: Start polling immediately after broadcast
-      pollForBalanceChange(balance);
-
       // Optmistic reset
       setAmountIn("");
       setQuote(null);
       
-      // BACKGROUND_FINALIZATION: Track finality in background without blocking polling
-      tx.wait().then(() => {
-        setHistory(prev => prev.map(t => t.id === txId ? { ...t, status: 'completed' } : t));
-        showDiagnostic("SUCCESS: Tokens swapped on-chain.", "info");
-      }).catch((err: any) => {
-        // Even if wait fails, polling might have already updated the balance
-        console.warn("Swap wait encountered an error:", err);
-      });
+      await tx.wait();
+      setHistory(prev => prev.map(t => t.id === txId ? { ...t, status: 'completed' } : t));
+      showDiagnostic("SUCCESS: Tokens swapped on-chain.", "info");
+      
+      // SMART_POLLING: Replacing static timeout with intelligent balance polling
+      pollForBalanceChange(balance);
     } catch (err: any) {
       setHistory(prev => prev.map(t => t.id === txId ? { ...t, status: 'failed' } : t));
       showDiagnostic(`SWAP_FAILED: ${err.message}`, "error");
@@ -234,7 +222,7 @@ export function SwapHub() {
             Connect your Starknet wallet to access swapping, staking, and advanced DeFi protocols.
           </p>
           <button 
-            onClick={connectWallet}
+            onClick={() => connectWallet()}
             className="w-full py-4 bg-[#c8ff00] text-black font-bebas text-xl tracking-[5px] hover:shadow-[0_0_20px_rgba(200,255,0,0.3)] transition-all"
           >
             SYNC_WALLET_FOR_ACCESS
@@ -336,7 +324,7 @@ export function SwapHub() {
         {/* Switch Divider */}
         <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
            <button 
-             onClick={switchTokens}
+             onClick={() => switchTokens()}
              className="w-10 h-10 bg-[#06070a] border-2 border-white/10 rounded-full flex items-center justify-center text-white/40 hover:text-[#c8ff00] hover:border-[#c8ff00] transition-all hover:rotate-180 duration-500 shadow-[0_0_20px_rgba(0,0,0,0.5)]"
            >
               <ArrowDownUp className="w-5 h-5" />
@@ -400,7 +388,7 @@ export function SwapHub() {
       {/* Execute Build */}
       <button 
         disabled={!quote || isSwapping || isQuoting || priceImpact > 10}
-        onClick={handleSwap}
+        onClick={() => handleSwap()}
         className={`w-full py-6 font-bebas text-3xl tracking-[10px] transition-all relative overflow-hidden group ${
           !quote || isSwapping || isQuoting || priceImpact > 10
           ? 'bg-white/5 text-white/20 cursor-not-allowed'

@@ -648,12 +648,14 @@ export function StarkAgent() {
           throw new Error("ACTION_NOT_YET_SUPPORTED_ON_MAINNET");
       }
 
-      const txHash = tx.transaction_hash || tx.hash || "";
-      setHistory(prev => [...prev, { type: 'agent', content: `TX_BROADCAST_SUCCESS: Hash: ${txHash ? txHash.slice(0, 8) : "PENDING"}...` }]);
+      setHistory(prev => [...prev, { type: 'agent', content: `TX_BROADCAST_SUCCESS: Action submitted to Starknet.` }]);
       showDiagnostic("AGENT_ACTION: Transaction dispatched.", "info");
       setParsedIntent(null);
       
-      // POLLING_SYNC: Start polling immediately after broadcast
+      await tx.wait();
+      setHistory(prev => [...prev, { type: 'agent', content: "FINALIZATION_SUCCESS: Transaction reached 'Accepted on L2' state." }]);
+      
+      // POLLING_SYNC: Instead of a static delay, we poll until the balance actually changes
       let attempts = 0;
       const initialBals = JSON.stringify(balances);
       const poll = async () => {
@@ -670,11 +672,6 @@ export function StarkAgent() {
         }
       };
       setTimeout(poll, 1000);
-
-      // BACKGROUND_WAIT: Track finality in background
-      tx.wait().then(() => {
-        setHistory(prev => [...prev, { type: 'agent', content: "FINALIZATION_SUCCESS: Transaction reached 'Accepted on L2' state." }]);
-      }).catch((err: any) => console.warn("Agent tx wait error:", err));
       
     } catch (err: any) {
       const msg = err.message || "UNKNOWN_ERROR";

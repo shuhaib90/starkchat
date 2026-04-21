@@ -36,7 +36,7 @@ interface ValidatorPool {
 }
 
 export function StakingHub() {
-  const { sdk, wallet, address, showDiagnostic, connectWallet, rotateRpc } = useWallet();
+  const { sdk, wallet, address, showDiagnostic, connectWallet } = useWallet();
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [validators, setValidators] = useState<ValidatorPool[]>([]);
@@ -85,7 +85,7 @@ export function StakingHub() {
     }
   }, [selectedValidator]);
 
-  const fetchStakingData = useCallback(async (isRetry = false): Promise<ValidatorPool[]> => {
+  const fetchStakingData = useCallback(async (): Promise<ValidatorPool[]> => {
     // Pause all background activity while user is interacting with modal to prevent glitches
     if (!sdk || selectedValidator) {
       if (!sdk) setIsLoading(false);
@@ -191,14 +191,6 @@ export function StakingHub() {
       return processed;
     } catch (e: any) {
       console.error("Staking sync failed", e);
-      
-      if (isNetworkError && !isRetry) {
-        // SILENT_RETRY: Keep everything on the private Alchemy lane
-        return new Promise(resolve => {
-          setTimeout(() => resolve(fetchStakingData(true)), 1500);
-        });
-      }
-      
       showDiagnostic(`SYNC_ERROR: ${e.message}`, "error");
       return [];
     } finally {
@@ -251,8 +243,7 @@ export function StakingHub() {
       showDiagnostic(`INITIATING: Transmitting ${stakeAmount} STRK to ${validator.name}...`, "info");
       
       const tx = await wallet.stake(fromAddress(validator.poolContract as string), amount);
-      const txHash = tx.transaction_hash || tx.hash || "";
-      showDiagnostic(`TRANSMISSION_LIVE: ${stakeAmount} STRK broadcast. Tracking ref: ${txHash ? txHash.slice(0, 10) : "PENDING"}...`, "info");
+      showDiagnostic(`TRANSMISSION_LIVE: ${stakeAmount} STRK broadcast. Tracking ref: ${tx.hash.slice(0, 10)}...`, "info");
       
       // Optimistic UI Update: handles both existing positions and first-time stakers
       setValidators(prev => prev.map(v => {
@@ -276,11 +267,11 @@ export function StakingHub() {
       setTimeout(() => setShowSuccess(false), 3000);
 
       // Background Finality Tracking
-      pollForStakingChange();
       tx.wait().then(() => {
         showDiagnostic("SUCCESS: Stake finalized on-chain.", "info");
+        pollForStakingChange();
       }).catch((err: any) => {
-        console.warn("Stake wait encountered an error:", err);
+        showDiagnostic(`FINALITY_ERROR: ${err.message}`, "error");
       });
 
     } catch (e: any) {
@@ -296,10 +287,9 @@ export function StakingHub() {
       setIsProcessing(true);
       const tx = await wallet.claimPoolRewards(fromAddress(pool));
       showDiagnostic("HARVESTING: Signature broadcast to Starknet...", "info");
+      await tx.wait();
+      showDiagnostic("SUCCESS: Rewards claimed to your wallet.", "info");
       pollForStakingChange();
-      tx.wait().then(() => {
-         showDiagnostic("SUCCESS: Rewards claimed to your wallet.", "info");
-      }).catch((err: any) => console.warn("Claim wait error:", err));
     } catch (e) {
       showDiagnostic("HARVEST_FAILED: Transaction rejected.", "error");
     } finally {
@@ -314,10 +304,9 @@ export function StakingHub() {
       // Construct multicall: claim -> approve -> stake rewards
       const tx = await (wallet as any).restakePoolRewards(fromAddress(v.poolContract as string), v.userPosition.rewards.toBase());
       showDiagnostic("RESTAKING: Re-investing yield via multicall...", "info");
+      await tx.wait();
+      showDiagnostic("SUCCESS: Rewards compounded into stake!", "info");
       pollForStakingChange();
-      tx.wait().then(() => {
-        showDiagnostic("SUCCESS: Rewards compounded into stake!", "info");
-      }).catch((err: any) => console.warn("Restake wait error:", err));
     } catch (e) {
       showDiagnostic("RESTAKE_FAILED: Protocol rejection or network error.", "error");
     } finally {
@@ -336,10 +325,10 @@ export function StakingHub() {
       setSelectedValidator(null);
       setIsProcessing(false);
 
-      pollForStakingChange();
       tx.wait().then(() => {
         showDiagnostic("SUCCESS: Cooldown period active.", "info");
-      }).catch((err: any) => console.warn("Exit intent wait error:", err));
+        pollForStakingChange();
+      });
     } catch (e: any) {
       showDiagnostic(`ERROR: ${e.message || "Exit intent failed."}`, "error");
       setIsProcessing(false);
@@ -356,10 +345,10 @@ export function StakingHub() {
       setSelectedValidator(null);
       setIsProcessing(false);
 
-      pollForStakingChange();
       tx.wait().then(() => {
         showDiagnostic("SUCCESS: STRK returned to wallet.", "info");
-      }).catch((err: any) => console.warn("Exit complete wait error:", err));
+        pollForStakingChange();
+      });
     } catch (e: any) {
       showDiagnostic(`ERROR: ${e.message || "Withdrawal failed."}`, "error");
       setIsProcessing(false);

@@ -32,6 +32,7 @@ const FAILSAFE_STRK = { address: STRK_TOKEN_ADDRESS, decimals: 18, symbol: "STRK
 const FAILSAFE_ETH = { address: ETH_TOKEN_ADDRESS, decimals: 18, symbol: "ETH" };
 const FAILSAFE_USDC = { address: "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8", decimals: 6, symbol: "USDC.e" };
 
+// Reliable RPC - Hard-locked to private Alchemy lane
 const PRIVATE_RPC = process.env.NEXT_PUBLIC_STARKNET_RPC_URL;
 const FALLBACK_RPCS = [PRIVATE_RPC].filter(Boolean) as string[];
 
@@ -57,8 +58,8 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
   const [address, setAddress] = useState<string | null>(null);
   const [connectorId, setConnectorId] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [activeRpc, setActiveRpc] = useState(PRIVATE_RPC || FALLBACK_RPCS[0]);
   const [rpcIndex, setRpcIndex] = useState(0);
-  const [activeRpc, setActiveRpc] = useState(FALLBACK_RPCS[0]);
   
   // Diagnostic State
   const [diagnostic, setDiagnostic] = useState<{ isOpen: boolean; message: string; type: string }>({
@@ -67,10 +68,11 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
     type: "info"
   });
 
-  // GRACEFUL_FAILOVER: If private RPC is dead, we allow rotation to fallbacks
+  // STRICT_ENFORCEMENT: Lock to private RPC if defined
   useEffect(() => {
     if (PRIVATE_RPC) {
-      console.log("[Starknet_Uplink] PRIVATE_LANE_RECOGNIZED:", PRIVATE_RPC.split('/').slice(0, 3).join('/'));
+      console.log("[Starknet_Uplink] STRICT_PRIVATE_LANE_ENFORCED:", PRIVATE_RPC.split('/').slice(0, 3).join('/'));
+      setActiveRpc(PRIVATE_RPC);
     }
   }, []);
   
@@ -79,26 +81,18 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
     const url = activeRpc;
     const isPrivate = url === PRIVATE_RPC;
     console.log(`[Starknet_Uplink] ${isPrivate ? 'PRIVATE_LANE_ACTIVE' : 'FALLBACK_NODE_ACTIVE'}: ${url?.split('/')[2]}`);
-    // Explicitly target RPC version 0.10 for stable DeFi performance
+    // Explicitly target RPC version 0.10 protocol for stable DeFi performance
     return new RpcProvider({ nodeUrl: url });
   }, [activeRpc]);
+
+  const rotateRpc = useCallback(() => {
+  }, []);
 
   const showDiagnostic = useCallback((message: string, type: 'warning' | 'error' | 'info' = 'info') => {
     setDiagnostic({ isOpen: true, message, type });
     // Auto-close after 8 seconds
     setTimeout(() => setDiagnostic(prev => ({ ...prev, isOpen: false })), 8000);
   }, []);
-
-  const rotateRpc = useCallback(() => {
-    if (FALLBACK_RPCS.length <= 1) return; // Dedicated private lane active
-    
-    setRpcIndex((prev) => {
-      const next = (prev + 1) % FALLBACK_RPCS.length;
-      setActiveRpc(FALLBACK_RPCS[next]);
-      showDiagnostic(`Switching to backup lane: ${FALLBACK_RPCS[next].split('/')[2]}`, "warning");
-      return next;
-    });
-  }, [showDiagnostic]);
 
   useEffect(() => {
     // Initialize on mount with our robust provider
