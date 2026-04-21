@@ -220,19 +220,27 @@ export function SimpleEarn() {
       if (mode === "deposit") {
         showDiagnostic(`DEPOSIT_INIT: Supplying ${amount} ${selectedToken.symbol} to earn interest...`, "info");
         const tx = await lendingClient.deposit({ token: tokenObj as any, amount: amountObj });
-        await tx.wait();
-        showDiagnostic(`DEPOSIT_SUCCESS: ${amount} ${selectedToken.symbol} is now earning yield!`, "info");
+        
+        // OPTIMISTIC_SYNC: Start polling immediately after broadcast
+        pollForSimpleEarnChange();
+        
+        tx.wait().then(() => {
+          showDiagnostic(`DEPOSIT_SUCCESS: ${amount} ${selectedToken.symbol} is now earning yield!`, "info");
+        }).catch((err: any) => console.warn("Deposit wait error:", err));
+
       } else {
         showDiagnostic(`WITHDRAW_INIT: Retrieving ${amount} ${selectedToken.symbol} from protocol...`, "info");
         const tx = await lendingClient.withdraw({ token: tokenObj as any, amount: amountObj });
-        await tx.wait();
-        showDiagnostic(`WITHDRAW_SUCCESS: ${amount} ${selectedToken.symbol} returned to wallet.`, "info");
+        
+        // OPTIMISTIC_SYNC: Start polling immediately after broadcast
+        pollForSimpleEarnChange();
+
+        tx.wait().then(() => {
+          showDiagnostic(`WITHDRAW_SUCCESS: ${amount} ${selectedToken.symbol} returned to wallet.`, "info");
+        }).catch((err: any) => console.warn("Withdraw wait error:", err));
       }
 
       setAmount("");
-      
-      // SMART_POLLING: Replacing static timeout with intelligent market state polling
-      pollForSimpleEarnChange();
     } catch (err: any) {
       console.error("[SimpleEarn] Action failed:", err);
       showDiagnostic(`TRANSACTION_ERROR: ${err.message || "Request failed"}`, "error");

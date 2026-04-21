@@ -268,11 +268,11 @@ export function StakingHub() {
       setTimeout(() => setShowSuccess(false), 3000);
 
       // Background Finality Tracking
+      pollForStakingChange();
       tx.wait().then(() => {
         showDiagnostic("SUCCESS: Stake finalized on-chain.", "info");
-        pollForStakingChange();
       }).catch((err: any) => {
-        showDiagnostic(`FINALITY_ERROR: ${err.message}`, "error");
+        console.warn("Stake wait encountered an error:", err);
       });
 
     } catch (e: any) {
@@ -288,9 +288,10 @@ export function StakingHub() {
       setIsProcessing(true);
       const tx = await wallet.claimPoolRewards(fromAddress(pool));
       showDiagnostic("HARVESTING: Signature broadcast to Starknet...", "info");
-      await tx.wait();
-      showDiagnostic("SUCCESS: Rewards claimed to your wallet.", "info");
       pollForStakingChange();
+      tx.wait().then(() => {
+         showDiagnostic("SUCCESS: Rewards claimed to your wallet.", "info");
+      }).catch((err: any) => console.warn("Claim wait error:", err));
     } catch (e) {
       showDiagnostic("HARVEST_FAILED: Transaction rejected.", "error");
     } finally {
@@ -305,9 +306,10 @@ export function StakingHub() {
       // Construct multicall: claim -> approve -> stake rewards
       const tx = await (wallet as any).restakePoolRewards(fromAddress(v.poolContract as string), v.userPosition.rewards.toBase());
       showDiagnostic("RESTAKING: Re-investing yield via multicall...", "info");
-      await tx.wait();
-      showDiagnostic("SUCCESS: Rewards compounded into stake!", "info");
       pollForStakingChange();
+      tx.wait().then(() => {
+        showDiagnostic("SUCCESS: Rewards compounded into stake!", "info");
+      }).catch((err: any) => console.warn("Restake wait error:", err));
     } catch (e) {
       showDiagnostic("RESTAKE_FAILED: Protocol rejection or network error.", "error");
     } finally {
@@ -326,10 +328,10 @@ export function StakingHub() {
       setSelectedValidator(null);
       setIsProcessing(false);
 
+      pollForStakingChange();
       tx.wait().then(() => {
         showDiagnostic("SUCCESS: Cooldown period active.", "info");
-        pollForStakingChange();
-      });
+      }).catch((err: any) => console.warn("Exit intent wait error:", err));
     } catch (e: any) {
       showDiagnostic(`ERROR: ${e.message || "Exit intent failed."}`, "error");
       setIsProcessing(false);
@@ -346,10 +348,10 @@ export function StakingHub() {
       setSelectedValidator(null);
       setIsProcessing(false);
 
+      pollForStakingChange();
       tx.wait().then(() => {
         showDiagnostic("SUCCESS: STRK returned to wallet.", "info");
-        pollForStakingChange();
-      });
+      }).catch((err: any) => console.warn("Exit complete wait error:", err));
     } catch (e: any) {
       showDiagnostic(`ERROR: ${e.message || "Withdrawal failed."}`, "error");
       setIsProcessing(false);

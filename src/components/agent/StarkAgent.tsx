@@ -653,10 +653,7 @@ export function StarkAgent() {
       showDiagnostic("AGENT_ACTION: Transaction dispatched.", "info");
       setParsedIntent(null);
       
-      await tx.wait();
-      setHistory(prev => [...prev, { type: 'agent', content: "FINALIZATION_SUCCESS: Transaction reached 'Accepted on L2' state." }]);
-      
-      // POLLING_SYNC: Instead of a static delay, we poll until the balance actually changes
+      // POLLING_SYNC: Start polling immediately after broadcast
       let attempts = 0;
       const initialBals = JSON.stringify(balances);
       const poll = async () => {
@@ -673,6 +670,11 @@ export function StarkAgent() {
         }
       };
       setTimeout(poll, 1000);
+
+      // BACKGROUND_WAIT: Track finality in background
+      tx.wait().then(() => {
+        setHistory(prev => [...prev, { type: 'agent', content: "FINALIZATION_SUCCESS: Transaction reached 'Accepted on L2' state." }]);
+      }).catch((err: any) => console.warn("Agent tx wait error:", err));
       
     } catch (err: any) {
       const msg = err.message || "UNKNOWN_ERROR";

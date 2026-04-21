@@ -182,16 +182,21 @@ export function SwapHub() {
       setHistory(prev => prev.map(t => t.id === txId ? { ...t, hash: txHash } : t));
       showDiagnostic(`BROADCAST: Swap sequence LIVE. Hash: ${txHash ? txHash.slice(0, 10) : "TRACKING"}...`, "info");
       
+      // OPTIMISTIC_SYNC: Start polling immediately after broadcast
+      pollForBalanceChange(balance);
+
       // Optmistic reset
       setAmountIn("");
       setQuote(null);
       
-      await tx.wait();
-      setHistory(prev => prev.map(t => t.id === txId ? { ...t, status: 'completed' } : t));
-      showDiagnostic("SUCCESS: Tokens swapped on-chain.", "info");
-      
-      // SMART_POLLING: Replacing static timeout with intelligent balance polling
-      pollForBalanceChange(balance);
+      // BACKGROUND_FINALIZATION: Track finality in background without blocking polling
+      tx.wait().then(() => {
+        setHistory(prev => prev.map(t => t.id === txId ? { ...t, status: 'completed' } : t));
+        showDiagnostic("SUCCESS: Tokens swapped on-chain.", "info");
+      }).catch((err: any) => {
+        // Even if wait fails, polling might have already updated the balance
+        console.warn("Swap wait encountered an error:", err);
+      });
     } catch (err: any) {
       setHistory(prev => prev.map(t => t.id === txId ? { ...t, status: 'failed' } : t));
       showDiagnostic(`SWAP_FAILED: ${err.message}`, "error");
