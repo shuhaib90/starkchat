@@ -114,13 +114,20 @@ export function StakingHub() {
         "0x02952d1e0de1de08fbe6a75d9d0e388e3e89d5d9d42d5f85906ec42ea02e35de"  // Nethermind
       ];
 
-      // Process ALL validators - optimized for private RPC (Alchemy/Blast)
+      // Process ELITE validators first for instant UI response, then trickle others
+      const eliteList = vList.filter(v => ELITE_VALIDATORS.includes(v.stakerAddress));
+      const otherList = vList.filter(v => !ELITE_VALIDATORS.includes(v.stakerAddress));
+      const sortedList = [...eliteList, ...otherList];
+
       const processed: ValidatorPool[] = [];
-      const CHUNK_SIZE = 50; // Increased from 8 to 50 to leverage private RPC capacity
-      for (let i = 0; i < vList.length; i += CHUNK_SIZE) {
-        if (selectedValidator) break;
+      const CHUNK_SIZE = 5; // Reduced from 50 to 5 to protect Free Alchemy CUPS limits
+      for (let i = 0; i < sortedList.length; i += CHUNK_SIZE) {
+        if (selectedValidator || !isMounted.current) break;
         
-        const chunk = vList.slice(i, i + CHUNK_SIZE);
+        // Add a small rest cycle between chunks to allow the CUPS bucket to refill
+        if (i > 0) await new Promise(resolve => setTimeout(resolve, 300));
+
+        const chunk = sortedList.slice(i, i + CHUNK_SIZE);
         const results = await Promise.all(chunk.map(async (v): Promise<ValidatorPool | null> => {
           try {
             const pools = await sdk.getStakerPools(fromAddress(v.stakerAddress));
