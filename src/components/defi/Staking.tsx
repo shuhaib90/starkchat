@@ -243,7 +243,8 @@ export function StakingHub() {
       showDiagnostic(`INITIATING: Transmitting ${stakeAmount} STRK to ${validator.name}...`, "info");
       
       const tx = await wallet.stake(fromAddress(validator.poolContract as string), amount);
-      showDiagnostic(`TRANSMISSION_LIVE: ${stakeAmount} STRK broadcast. Tracking ref: ${tx.hash.slice(0, 10)}...`, "info");
+      const txHash = tx.transaction_hash || tx.hash || "";
+      showDiagnostic(`TRANSMISSION_LIVE: ${stakeAmount} STRK broadcast. Tracking ref: ${txHash ? txHash.slice(0, 10) : "PENDING"}...`, "info");
       
       // Optimistic UI Update: handles both existing positions and first-time stakers
       setValidators(prev => prev.map(v => {

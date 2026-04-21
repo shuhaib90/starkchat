@@ -648,7 +648,8 @@ export function StarkAgent() {
           throw new Error("ACTION_NOT_YET_SUPPORTED_ON_MAINNET");
       }
 
-      setHistory(prev => [...prev, { type: 'agent', content: `TX_BROADCAST_SUCCESS: Action submitted to Starknet.` }]);
+      const txHash = tx.transaction_hash || tx.hash || "";
+      setHistory(prev => [...prev, { type: 'agent', content: `TX_BROADCAST_SUCCESS: Hash: ${txHash ? txHash.slice(0, 8) : "PENDING"}...` }]);
       showDiagnostic("AGENT_ACTION: Transaction dispatched.", "info");
       setParsedIntent(null);
       
