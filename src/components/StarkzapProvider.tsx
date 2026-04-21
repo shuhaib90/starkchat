@@ -79,7 +79,7 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
     const url = activeRpc;
     const isPrivate = url === PRIVATE_RPC;
     console.log(`[Starknet_Uplink] ${isPrivate ? 'PRIVATE_LANE_ACTIVE' : 'FALLBACK_NODE_ACTIVE'}: ${url?.split('/')[2]}`);
-    // Explicitly target RPC version 0.7 for SDK 9.x compatibility
+    // Explicitly target RPC version 0.10 for stable DeFi performance
     return new RpcProvider({ nodeUrl: url });
   }, [activeRpc]);
 
