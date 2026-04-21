@@ -49,6 +49,14 @@ export function StakingHub() {
   const inputRef = useRef<HTMLInputElement>(null);
   const diagnosticRef = useRef(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
   
   // High-precision countdown state for the withdrawal timer
   const [timeLeft, setTimeLeft] = useState<{d:number, h:number, m:number, s:number} | null>(null);
@@ -209,15 +217,16 @@ export function StakingHub() {
       const newData = await fetchStakingData();
       const newState = newData?.map((v: any) => v.userPosition?.staked?.toBase()?.toString() || "0").join('|');
       
+      if (!isMounted.current) return;
       if (newState === oldState) {
         attempts++;
         showDiagnostic(`SYNC: Checking indexer... (${attempts}/8)`, "info");
-        setTimeout(check, 3000);
+        setTimeout(() => isMounted.current && check(), 3000);
       } else {
         showDiagnostic("SYNC_SUCCESS: Staking data stabilized.", "info");
       }
     };
-    setTimeout(check, 2000);
+    if (isMounted.current) setTimeout(check, 2000);
   };
 
   useEffect(() => {

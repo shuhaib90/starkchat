@@ -102,7 +102,7 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
     });
     
     setSdk(instance);
-  }, [provider]);
+  }, [activeRpc]); // Re-init SDK if RPC changes
 
   useEffect(() => {
     // [DIAGNOSTIC] Check for critical Supabase environment variables
