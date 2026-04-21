@@ -85,11 +85,11 @@ export function StakingHub() {
     }
   }, [selectedValidator]);
 
-  const fetchStakingData = useCallback(async () => {
+  const fetchStakingData = useCallback(async (): Promise<ValidatorPool[]> => {
     // Pause all background activity while user is interacting with modal to prevent glitches
     if (!sdk || selectedValidator) {
       if (!sdk) setIsLoading(false);
-      return;
+      return [];
     }
 
     try {
@@ -188,13 +188,37 @@ export function StakingHub() {
           diagnosticRef.current = true;
         }
       }
+      return processed;
     } catch (e: any) {
       console.error("Staking sync failed", e);
       showDiagnostic(`SYNC_ERROR: ${e.message}`, "error");
+      return [];
     } finally {
       setIsLoading(false);
     }
   }, [sdk, wallet, address, showDiagnostic, selectedValidator]);
+
+  const pollForStakingChange = async () => {
+    let attempts = 0;
+    const oldState = JSON.stringify(validators.map(v => v.userPosition?.staked?.toBase() || "0"));
+    const check = async () => {
+      if (attempts > 8) {
+         showDiagnostic("SYNC: Complete (timeout).", "info");
+         return;
+      }
+      const newData = await fetchStakingData();
+      const newState = JSON.stringify(newData?.map((v: any) => v.userPosition?.staked?.toBase() || "0"));
+      
+      if (newState === oldState) {
+        attempts++;
+        showDiagnostic(`SYNC: Checking indexer... (${attempts}/8)`, "info");
+        setTimeout(check, 3000);
+      } else {
+        showDiagnostic("SYNC_SUCCESS: Staking data stabilized.", "info");
+      }
+    };
+    setTimeout(check, 2000);
+  };
 
   useEffect(() => {
     if (selectedValidator) return; 
@@ -245,11 +269,7 @@ export function StakingHub() {
       // Background Finality Tracking
       tx.wait().then(() => {
         showDiagnostic("SUCCESS: Stake finalized on-chain.", "info");
-        // PROPAGATION_DELAY: Starknet indexers need a few seconds to catch up
-        setTimeout(() => {
-          fetchStakingData();
-          showDiagnostic("UI_SYNC_COMPLETE: Staking positions updated.", "info");
-        }, 3000);
+        pollForStakingChange();
       }).catch((err: any) => {
         showDiagnostic(`FINALITY_ERROR: ${err.message}`, "error");
       });
@@ -269,12 +289,7 @@ export function StakingHub() {
       showDiagnostic("HARVESTING: Signature broadcast to Starknet...", "info");
       await tx.wait();
       showDiagnostic("SUCCESS: Rewards claimed to your wallet.", "info");
-      
-      // PROPAGATION_DELAY: Starknet indexers need a few seconds to catch up
-      setTimeout(() => {
-        fetchStakingData();
-        showDiagnostic("UI_SYNC_COMPLETE: Rewards and balance refreshed.", "info");
-      }, 3000);
+      pollForStakingChange();
     } catch (e) {
       showDiagnostic("HARVEST_FAILED: Transaction rejected.", "error");
     } finally {
@@ -291,12 +306,7 @@ export function StakingHub() {
       showDiagnostic("RESTAKING: Re-investing yield via multicall...", "info");
       await tx.wait();
       showDiagnostic("SUCCESS: Rewards compounded into stake!", "info");
-      
-      // PROPAGATION_DELAY: Starknet indexers need a few seconds to catch up
-      setTimeout(() => {
-        fetchStakingData();
-        showDiagnostic("UI_SYNC_COMPLETE: Compounded stake updated.", "info");
-      }, 3000);
+      pollForStakingChange();
     } catch (e) {
       showDiagnostic("RESTAKE_FAILED: Protocol rejection or network error.", "error");
     } finally {
@@ -317,11 +327,7 @@ export function StakingHub() {
 
       tx.wait().then(() => {
         showDiagnostic("SUCCESS: Cooldown period active.", "info");
-        // PROPAGATION_DELAY: Starknet indexers need a few seconds to catch up
-        setTimeout(() => {
-          fetchStakingData();
-          showDiagnostic("UI_SYNC_COMPLETE: Cooldown status updated.", "info");
-        }, 3000);
+        pollForStakingChange();
       });
     } catch (e: any) {
       showDiagnostic(`ERROR: ${e.message || "Exit intent failed."}`, "error");
@@ -341,11 +347,7 @@ export function StakingHub() {
 
       tx.wait().then(() => {
         showDiagnostic("SUCCESS: STRK returned to wallet.", "info");
-        // PROPAGATION_DELAY: Starknet indexers need a few seconds to catch up
-        setTimeout(() => {
-          fetchStakingData();
-          showDiagnostic("UI_SYNC_COMPLETE: Wallet balance updated.", "info");
-        }, 3000);
+        pollForStakingChange();
       });
     } catch (e: any) {
       showDiagnostic(`ERROR: ${e.message || "Withdrawal failed."}`, "error");

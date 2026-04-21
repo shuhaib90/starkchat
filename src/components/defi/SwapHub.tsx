@@ -22,8 +22,8 @@ import { uint256 } from "starknet";
 const SUPPORTED_TOKENS = [
   { ...mainnetTokens.STRK, symbol: "STRK", name: "Starknet Token" },
   { ...mainnetTokens.ETH, symbol: "ETH", name: "Ethereum Pool" },
-  { ...mainnetTokens.USDC_E, symbol: "USDC.e", name: "Bridged USDC" },
-  { ...mainnetTokens.USDC, symbol: "USDC", name: "Native USDC" },
+  { address: "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8", decimals: 6, symbol: "USDC.e", name: "Bridged USDC" },
+  { address: "0x033068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb", decimals: 6, symbol: "USDC", name: "Native USDC" },
 ];
 
 interface SwapTx {
@@ -61,7 +61,7 @@ export function SwapHub() {
 
     try {
       setIsQuoting(true);
-      const parsedAmount = Amount.parse(amountIn, tokenIn);
+      const parsedAmount = Amount.parse(amountIn, tokenIn as any);
       const res = await wallet.getQuote({
         tokenIn,
         tokenOut,
@@ -86,8 +86,8 @@ export function SwapHub() {
     };
   }, [fetchQuote]);
 
-  const fetchBalance = useCallback(async (retryCount = 0) => {
-    if (!address || !provider || !tokenIn.address) return;
+  const fetchBalance = useCallback(async (retryCount = 0): Promise<string> => {
+    if (!address || !provider || !tokenIn.address) return "0.0000";
     try {
       setIsFetchingBalance(true);
       const result = await provider.callContract({
@@ -99,15 +99,38 @@ export function SwapHub() {
       const raw = uint256.uint256ToBN({ low: result[0], high: result[1] });
       const formatted = (Number(raw) / Math.pow(10, tokenIn.decimals)).toFixed(4);
       setBalance(formatted);
+      return formatted;
     } catch (err) {
       console.error("Balance fetch failed", err);
       if (retryCount < 1) {
-        setTimeout(() => fetchBalance(retryCount + 1), 1000);
+        return new Promise(resolve => {
+          setTimeout(() => resolve(fetchBalance(retryCount + 1)), 1000);
+        });
       }
+      return "0.0000";
     } finally {
       setIsFetchingBalance(false);
     }
   }, [address, provider, tokenIn]);
+
+  const pollForBalanceChange = async (oldBal: string) => {
+    let attempts = 0;
+    const check = async () => {
+      if (attempts > 6) {
+         showDiagnostic("SYNC: Complete (timeout).", "info");
+         return;
+      }
+      const newBal = await fetchBalance();
+      if (newBal === oldBal) {
+        attempts++;
+        showDiagnostic(`SYNC: Waiting for update... (Attempt ${attempts}/6)`, "info");
+        setTimeout(check, 3000);
+      } else {
+        showDiagnostic("SYNC_SUCCESS: On-chain update detected.", "info");
+      }
+    };
+    setTimeout(check, 2000);
+  };
 
   useEffect(() => {
     fetchBalance();
@@ -118,7 +141,13 @@ export function SwapHub() {
   const handlePercentageClick = (percent: number) => {
     const balNum = Number(balance);
     if (!balNum || balNum <= 0) return;
-    const amount = (balNum * percent) / 100;
+    
+    let amount = (balNum * percent) / 100;
+    // PRECISION_BUFFER: Subtract a tiny amount for MAX swaps to prevent "balance too low" multicall errors
+    if (percent === 100) {
+      const buffer = 0.0001; 
+      amount = Math.max(0, amount - buffer);
+    }
     setAmountIn(amount.toFixed(6)); // Precision cap
   };
 
@@ -143,9 +172,9 @@ export function SwapHub() {
       showDiagnostic(`INITIATING: Swapping ${amountIn} ${tokenIn.symbol} for ${tokenOut.symbol}...`, "info");
       
       const tx = await wallet.swap({
-        tokenIn,
-        tokenOut,
-        amountIn: Amount.parse(amountIn, tokenIn),
+        tokenIn: tokenIn as any,
+        tokenOut: tokenOut as any,
+        amountIn: Amount.parse(amountIn, tokenIn as any),
         slippageBps: BigInt(slippage)
       });
       
@@ -160,11 +189,8 @@ export function SwapHub() {
       setHistory(prev => prev.map(t => t.id === txId ? { ...t, status: 'completed' } : t));
       showDiagnostic("SUCCESS: Tokens swapped on-chain.", "info");
       
-      // PROPAGATION_DELAY: Starknet indexers need a few seconds to catch up
-      setTimeout(() => {
-        fetchBalance();
-        showDiagnostic("UI_SYNC_COMPLETE: Token balances updated.", "info");
-      }, 3000);
+      // SMART_POLLING: Replacing static timeout with intelligent balance polling
+      pollForBalanceChange(balance);
     } catch (err: any) {
       setHistory(prev => prev.map(t => t.id === txId ? { ...t, status: 'failed' } : t));
       showDiagnostic(`SWAP_FAILED: ${err.message}`, "error");

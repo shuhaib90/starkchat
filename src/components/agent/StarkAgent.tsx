@@ -101,7 +101,7 @@ export function StarkAgent() {
       const results: any = { STRK: "0.0000", ETH: "0.0000", USDC: "0.0000" };
       
       // TRUTH_SOURCE: Use SDK addresses to ensure perfect matching
-      const targetMap = {
+      const targetMap: any = {
         STRK: mainnetTokens.STRK.address,
         ETH: mainnetTokens.ETH.address,
         USDC: mainnetTokens.USDC.address
@@ -110,15 +110,20 @@ export function StarkAgent() {
       if (positions && positions.length > 0) {
         for (const s of symbols) {
           const addr = targetMap[s];
+          if (!addr) continue; // SAFETY_CHECK: Prevent BigInt(undefined)
+
           // ROBUST_MATCHing: Use BigInt to ignore padding/casing differences
-          const pos = positions.find((p: any) => 
-            BigInt(p.collateral.token.address) === BigInt(addr) && 
-            p.type === "earn"
-          );
+          const pos = positions.find((p: any) => {
+            try {
+              if (!p.collateral?.token?.address) return false;
+              return BigInt(p.collateral.token.address) === BigInt(addr) && p.type === "earn";
+            } catch (e) { return false; }
+          });
           
           if (pos && pos.collateral) {
             const decimals = pos.collateral.token.decimals || (s === "USDC" ? 6 : 18);
-            const rawVal = BigInt(pos.collateral.amount);
+            const amountStr = pos.collateral.amount || "0";
+            const rawVal = BigInt(amountStr);
             results[s] = (Number(rawVal) / Math.pow(10, decimals)).toFixed(4);
           }
         }
@@ -650,11 +655,23 @@ export function StarkAgent() {
       await tx.wait();
       setHistory(prev => [...prev, { type: 'agent', content: "FINALIZATION_SUCCESS: Transaction reached 'Accepted on L2' state." }]);
       
-      // PROPAGATION_DELAY: Starknet indexers need a few seconds to catch up
-      setTimeout(() => {
-        fetchAgentBalances();
-        showDiagnostic("AGENT_SYNC_COMPLETE: Portfolio data updated.", "info");
-      }, 3000);
+      // POLLING_SYNC: Instead of a static delay, we poll until the balance actually changes
+      let attempts = 0;
+      const initialBals = JSON.stringify(balances);
+      const poll = async () => {
+        if (attempts > 5) {
+          showDiagnostic("AGENT_SYNC: Balance refresh completed (timeout).", "info");
+          return;
+        }
+        await fetchAgentBalances();
+        if (initialBals === JSON.stringify(balances)) {
+           attempts++;
+           setTimeout(poll, 2500);
+        } else {
+           showDiagnostic("AGENT_SYNC_COMPLETE: On-chain change detected.", "info");
+        }
+      };
+      setTimeout(poll, 1000);
       
     } catch (err: any) {
       const msg = err.message || "UNKNOWN_ERROR";

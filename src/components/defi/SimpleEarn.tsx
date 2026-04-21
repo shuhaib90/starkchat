@@ -65,8 +65,8 @@ export function SimpleEarn() {
     return markets.find(m => m.symbol === selectedTokenSymbol) || null;
   }, [markets, selectedTokenSymbol]);
 
-  const fetchData = useCallback(async (isRetry = false) => {
-    if (!lendingClient || !address || !provider) return;
+  const fetchData = useCallback(async (isRetry = false): Promise<TokenMarketData[]> => {
+    if (!lendingClient || !address || !provider) return [];
     try {
       setIsLoading(true);
       
@@ -147,7 +147,9 @@ export function SimpleEarn() {
       }));
       setMarkets(processedMarkets);
       setLastError(null);
+      setMarkets(processedMarkets);
       setRetryCount(0);
+      return processedMarkets;
     } catch (err: any) {
       console.error("[SimpleEarn] Data fetch failed:", err);
       const isNetworkError = err.message?.includes("fetch") || err.message?.includes("Load") || err.message?.includes("network");
@@ -157,16 +159,40 @@ export function SimpleEarn() {
         rotateRpc();
         setRetryCount(prev => prev + 1);
         // Delay slightly before retrying
-        setTimeout(() => fetchData(true), 800);
-        return;
+        return new Promise(resolve => {
+          setTimeout(() => resolve(fetchData(true)), 800);
+        });
       }
       
       setLastError(err.message || "Network Error");
       showDiagnostic(`FETCH_ERROR: ${err.message || "Failed to retrieve market data"}. Try rotating RPC node.`, "error");
+      return [];
     } finally {
       setIsLoading(false);
     }
   }, [address, lendingClient, provider, showDiagnostic, rotateRpc, retryCount]);
+
+  const pollForSimpleEarnChange = async () => {
+    let attempts = 0;
+    const oldState = JSON.stringify(markets.map(m => m.supplied));
+    const check = async () => {
+      if (attempts > 8) {
+         showDiagnostic("SYNC: Complete (timeout).", "info");
+         return;
+      }
+      const newData = await fetchData();
+      const newState = JSON.stringify(newData?.map((m: any) => m.supplied));
+      
+      if (newState === oldState) {
+        attempts++;
+        showDiagnostic(`SYNC: Polling for market update... (${attempts}/8)`, "info");
+        setTimeout(check, 3000);
+      } else {
+        showDiagnostic("SYNC_SUCCESS: Market positions refreshed.", "info");
+      }
+    };
+    setTimeout(check, 2000);
+  };
 
   useEffect(() => {
     if (!address || !lendingClient || !provider) return;
@@ -205,11 +231,8 @@ export function SimpleEarn() {
 
       setAmount("");
       
-      // PROPAGATION_DELAY: Starknet indexers need a few seconds to catch up
-      setTimeout(() => {
-        fetchData();
-        showDiagnostic("UI_SYNC_COMPLETE: Market data and balances updated.", "info");
-      }, 3000);
+      // SMART_POLLING: Replacing static timeout with intelligent market state polling
+      pollForSimpleEarnChange();
     } catch (err: any) {
       console.error("[SimpleEarn] Action failed:", err);
       showDiagnostic(`TRANSACTION_ERROR: ${err.message || "Request failed"}`, "error");
