@@ -178,8 +178,9 @@ export function SwapHub() {
         slippageBps: BigInt(slippage)
       });
       
-      setHistory(prev => prev.map(t => t.id === txId ? { ...t, hash: tx.hash } : t));
-      showDiagnostic(`BROADCAST: Swap sequence LIVE. Hash: ${tx.hash.slice(0, 10)}...`, "info");
+      const txHash = tx.transaction_hash || tx.hash || "";
+      setHistory(prev => prev.map(t => t.id === txId ? { ...t, hash: txHash } : t));
+      showDiagnostic(`BROADCAST: Swap sequence LIVE. Hash: ${txHash.slice(0, 10)}...`, "info");
       
       // Optmistic reset
       setAmountIn("");

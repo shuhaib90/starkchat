@@ -258,8 +258,9 @@ export function StakingHub() {
       
       showDiagnostic(`INITIATING: Transmitting ${stakeAmount} STRK to ${validator.name}...`, "info");
       
-      const tx = await wallet.stake(fromAddress(validator.poolContract as string), amount);
-      showDiagnostic(`TRANSMISSION_LIVE: ${stakeAmount} STRK broadcast. Tracking ref: ${tx.hash.slice(0, 10)}...`, "info");
+      const tx = await wallet.stake(validator.poolContract, amount);
+      const txHash = tx.transaction_hash || tx.hash || "";
+      showDiagnostic(`BROADCAST: Staking sequence LIVE. Hash: ${txHash.slice(0, 10)}...`, "info");
       
       // Optimistic UI Update: handles both existing positions and first-time stakers
       setValidators(prev => prev.map(v => {
@@ -302,7 +303,8 @@ export function StakingHub() {
     try {
       setIsProcessing(true);
       const tx = await wallet.claimPoolRewards(fromAddress(pool));
-      showDiagnostic("HARVESTING: Signature broadcast to Starknet...", "info");
+      const txHash = tx.transaction_hash || tx.hash || "";
+      showDiagnostic(`HARVESTING: Signature broadcast. Hash: ${txHash.slice(0, 10)}...`, "info");
       await tx.wait();
       showDiagnostic("SUCCESS: Rewards claimed to your wallet.", "info");
       pollForStakingChange();
@@ -319,7 +321,8 @@ export function StakingHub() {
       setIsProcessing(true);
       // Construct multicall: claim -> approve -> stake rewards
       const tx = await (wallet as any).restakePoolRewards(fromAddress(v.poolContract as string), v.userPosition.rewards.toBase());
-      showDiagnostic("RESTAKING: Re-investing yield via multicall...", "info");
+      const txHash = tx.transaction_hash || tx.hash || "";
+      showDiagnostic(`RESTAKING: Re-investing yield. Hash: ${txHash.slice(0, 10)}...`, "info");
       await tx.wait();
       showDiagnostic("SUCCESS: Rewards compounded into stake!", "info");
       pollForStakingChange();
@@ -357,7 +360,8 @@ export function StakingHub() {
       setIsProcessing(true);
       showDiagnostic("WITHDRAWAL: Retrieving tokens from pool...", "info");
       const tx = await wallet.exitPool(fromAddress(poolContract));
-      showDiagnostic("BROADCAST: Retrieval command sent.", "info");
+      const txHash = tx.transaction_hash || tx.hash || "";
+      showDiagnostic(`BROADCAST: Withdrawal sequence LIVE. Hash: ${txHash.slice(0, 10)}...`, "info");
       setSelectedValidator(null);
       setIsProcessing(false);
 

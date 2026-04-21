@@ -150,7 +150,8 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
           ? amount 
           : Amount.parse(amount.toString(), tokenMeta);
           
-        const tx = await s.stake(normalizedAccount, parsedAmount);
+        const rawTx = await s.stake(normalizedAccount, parsedAmount);
+        const tx = { ...rawTx, hash: (rawTx as any).transaction_hash || (rawTx as any).hash };
         return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.hash) };
       },
       nativeStake: async (pool: string, amount: any, token?: any) => {
@@ -159,17 +160,20 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
       },
       claimPoolRewards: async (pool: string) => {
         const s = await Staking.fromPool(fromAddress(pool), sdkInstance.getProvider(), sdkInstance.getResolvedConfig().staking);
-        const tx = await s.claimRewards(normalizedAccount);
+        const rawTx = await s.claimRewards(normalizedAccount);
+        const tx = { ...rawTx, hash: (rawTx as any).transaction_hash || (rawTx as any).hash };
         return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.hash) };
       },
       exitPoolIntent: async (pool: string, amount: any) => {
         const s = await Staking.fromPool(fromAddress(pool), sdkInstance.getProvider(), sdkInstance.getResolvedConfig().staking);
-        const tx = await s.exitIntent(normalizedAccount, amount);
+        const rawTx = await s.exitIntent(normalizedAccount, amount);
+        const tx = { ...rawTx, hash: (rawTx as any).transaction_hash || (rawTx as any).hash };
         return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.hash) };
       },
       exitPool: async (pool: string) => {
         const s = await Staking.fromPool(fromAddress(pool), sdkInstance.getProvider(), sdkInstance.getResolvedConfig().staking);
-        const tx = await s.exit(normalizedAccount);
+        const rawTx = await s.exit(normalizedAccount);
+        const tx = { ...rawTx, hash: (rawTx as any).transaction_hash || (rawTx as any).hash };
         return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.hash) };
       },
       getPoolPosition: async (pool: string) => {
@@ -237,9 +241,10 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
              calldata: [normalizedAccount.address, amountRaw, "0"]
            }
          ];
-         const tx = await normalizedAccount.execute(calls);
-         return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.hash) };
-      },
+          const rawTx = await normalizedAccount.execute(calls);
+          const tx = { ...rawTx, hash: (rawTx as any).transaction_hash || (rawTx as any).hash };
+          return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.hash) };
+       },
       getQuote: async (params: any) => {
         const avnu = new AvnuSwapProvider();
         const ekubo = new EkuboSwapProvider();
@@ -253,7 +258,8 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
         const provider = params.provider === 'ekubo' ? ekubo : avnu;
         const chainId = sdkInstance.getResolvedConfig().chainId;
         const { calls } = await provider.prepareSwap({ ...params, chainId, takerAddress: normalizedAccount.address });
-        const tx = await normalizedAccount.execute(calls);
+        const rawTx = await normalizedAccount.execute(calls);
+        const tx = { ...rawTx, hash: (rawTx as any).transaction_hash || (rawTx as any).hash };
         return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.hash) };
       },
       balanceOf: async (token: any) => {
@@ -271,7 +277,8 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
             calldata: [recipient, amountRaw, "0"]
           }
         ];
-        const tx = await normalizedAccount.execute(calls);
+        const rawTx = await normalizedAccount.execute(calls);
+        const tx = { ...rawTx, hash: (rawTx as any).transaction_hash || (rawTx as any).hash };
         return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.hash) };
       },
       // nativeStake is now unified with stake at the top of the bridge
@@ -283,7 +290,7 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
           chainId: ChainId.MAINNET,
           execute: async (calls: any[], options?: any) => {
             const res = await normalizedAccount.execute(calls, options);
-            return { transaction_hash: res.hash, wait: async () => sdkInstance.getProvider().waitForTransaction(res.hash) };
+            return { hash: res.transaction_hash || res.hash, transaction_hash: res.transaction_hash || res.hash, wait: async () => sdkInstance.getProvider().waitForTransaction(res.hash) };
           }
         };
         const client = new LendingClient(dynamicContext as any, new VesuLendingProvider());
@@ -308,7 +315,7 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
           chainId: ChainId.MAINNET,
           execute: async (calls: any[], options?: any) => {
             const res = await normalizedAccount.execute(calls, options);
-            return { transaction_hash: res.hash, wait: async () => sdkInstance.getProvider().waitForTransaction(res.hash) };
+            return { hash: res.transaction_hash || res.hash, transaction_hash: res.transaction_hash || res.hash, wait: async () => sdkInstance.getProvider().waitForTransaction(res.hash) };
           }
         };
         const client = new LendingClient(dynamicContext as any, new VesuLendingProvider());
@@ -431,7 +438,7 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
       chainId: ChainId.MAINNET,
       execute: async (calls: any[], options?: any) => {
         const res = await wallet.execute(calls, options);
-        return { transaction_hash: res.hash, wait: async () => provider.waitForTransaction(res.hash) };
+        return { hash: res.transaction_hash || res.hash, transaction_hash: res.transaction_hash || res.hash, wait: async () => provider.waitForTransaction(res.hash) };
       },
       preflight: async (options: any) => {
         return { fee_estimate: [], total_fee: 0n };
