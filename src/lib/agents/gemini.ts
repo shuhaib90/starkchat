@@ -12,6 +12,8 @@ export const TOKEN_REGISTRY: Record<string, string> = {
   "LORDS": "0x0124aeb495b947201f5fac96fd1138e326ad86195b98df6dec9009158a533b49"
 };
 
+export const STARK_AGENT_ID = "STARK_AGENT";
+
 export const VALIDATOR_REGISTRY: Record<string, string> = {
   "karnot": "0x07e2c81d9a07b86bd2c540188d92a2c73cf5cc0e508d949015e7e84a7",
   "twinstake": "0x01aca15766cb615c3b7ca0fc3680cbde8b21934bb2e7b41594b9d046d7412c00",

@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { useWallet } from "./StarkzapProvider";
 import { usePathname, useRouter } from "next/navigation";
 import { NotificationToast } from "./NotificationToast";
+import { STARK_AGENT_ID } from "@/lib/agents/gemini";
 
 export function RealtimeNotifier() {
   const { address } = useWallet();
@@ -40,6 +41,9 @@ export function RealtimeNotifier() {
         (payload: any) => {
           const msg = payload.new;
           if (!msg) return;
+
+          // SILENCE_AGENT: Do not trigger notifications for messages sent by the AI Agent
+          if (msg.sender_address === STARK_AGENT_ID) return;
 
           // Check if user is already in the specific chat room
           const isInCorrectChat = pathname === `/chat/${msg.sender_address}`;

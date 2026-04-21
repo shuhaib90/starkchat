@@ -2,7 +2,8 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useWallet } from "@/components/StarkzapProvider";
-import { parseCommand, TOKEN_REGISTRY, VALIDATOR_REGISTRY } from "@/lib/agents/gemini";
+import { supabase } from "@/lib/supabase";
+import { parseCommand, TOKEN_REGISTRY, VALIDATOR_REGISTRY, STARK_AGENT_ID } from "@/lib/agents/gemini";
 import { 
   Terminal, 
   Send, 
@@ -15,8 +16,10 @@ import {
   ArrowRight,
   TrendingUp,
   HandCoins,
-  CpuIcon
+  CpuIcon,
+  Trash2
 } from "lucide-react";
+import { normalizeAddress } from "@/lib/address";
 import { 
   Amount, 
   mainnetTokens, 
@@ -120,6 +123,52 @@ export function StarkAgent() {
     }
   }, [address, provider]);
 
+  const fetchHistory = useCallback(async () => {
+    if (!address) return;
+    try {
+      const me = normalizeAddress(address);
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .or(`and(sender_address.eq.${me},receiver_address.eq.${STARK_AGENT_ID}),and(sender_address.eq.${STARK_AGENT_ID},receiver_address.eq.${me})`)
+        .order('created_at', { ascending: true })
+        .limit(50);
+      
+      if (data && !error && isMounted.current) {
+        const formattedHistory = data.map(m => ({
+          type: m.sender_address === STARK_AGENT_ID ? 'agent' : 'user',
+          content: m.content
+        })) as { type: 'user' | 'agent' | 'error', content: string }[];
+        
+        setHistory(formattedHistory);
+      }
+    } catch (err) {
+      console.error("[StarkAgent] History sync failed", err);
+    }
+  }, [address]);
+
+  const handleClearHistory = async () => {
+    if (!address) return;
+    try {
+      showDiagnostic("CLEARING_MEMORY: Finalizing deletion...", "info");
+      const me = normalizeAddress(address);
+      const { error } = await supabase
+        .from('messages')
+        .delete()
+        .or(`and(sender_address.eq.${me},receiver_address.eq.${STARK_AGENT_ID}),and(sender_address.eq.${STARK_AGENT_ID},receiver_address.eq.${me})`);
+      
+      if (error) throw error;
+      
+      if (isMounted.current) {
+        setHistory([]);
+        showDiagnostic("MEMORY_WIPE: Agent history cleared.", "info");
+      }
+    } catch (err: any) {
+      console.error("[StarkAgent] Purge failed", err);
+      showDiagnostic(`PURGE_ERROR: ${err.message}`, "error");
+    }
+  };
+
   const fetchLendingBalances = useCallback(async () => {
     if (!address || !lendingContext || !sdk) return;
     try {
@@ -168,22 +217,55 @@ export function StarkAgent() {
 
   useEffect(() => {
     fetchAgentBalances();
-    const interval = setInterval(fetchAgentBalances, 30000);
+    fetchHistory();
+    const interval = setInterval(() => {
+      fetchAgentBalances();
+      fetchHistory();
+    }, 30000);
     return () => clearInterval(interval);
   }, [fetchAgentBalances]);
   
   const resetGuidedFlow = (msg?: string, keepIntent: boolean = false) => {
     setGuidedConfig(null);
     if (!keepIntent) setParsedIntent(null);
-    if (msg) setHistory(prev => [...prev, { type: 'agent', content: msg }]);
+    if (msg) {
+      setHistory(prev => [...prev, { type: 'agent', content: msg }]);
+      // PERSIST_RESET_MSG: Log the completion or abort message
+      if (address) {
+        const me = normalizeAddress(address);
+        supabase.from("messages").insert([{
+          sender_address: STARK_AGENT_ID,
+          receiver_address: me,
+          content: msg,
+          type: "text"
+        }]).then(({ error }) => error && console.error("[StarkAgent] Purge logic err", error));
+      }
+    }
     return true;
   };
   
   const handleGuidedFlow = async (input: string) => {
     const msg = input.toLowerCase().trim();
+    if (!address) return false;
+    const me = normalizeAddress(address);
+
+    const persistUser = async (t: string) => supabase.from("messages").insert([{
+      sender_address: me,
+      receiver_address: STARK_AGENT_ID,
+      content: t,
+      type: "text"
+    }]);
+
+    const persistAgent = async (t: string) => supabase.from("messages").insert([{
+      sender_address: STARK_AGENT_ID,
+      receiver_address: me,
+      content: t,
+      type: "text"
+    }]);
     
     // CANCEL_WATCH
     if (["cancel", "reset", "stop", "exit"].includes(msg)) {
+      await persistUser(input);
       resetGuidedFlow("GUIDED_FLOW_ABORTED: State cleared. How can I help you generally?");
       return true;
     }
@@ -191,41 +273,54 @@ export function StarkAgent() {
     // INITIAL_TRIGGER
     if (!guidedConfig) {
       if (msg === "clear") {
-        setHistory([]);
+        await persistUser(input);
+        handleClearHistory();
         return true;
       }
 
       if (msg === "balance" || msg === "portfolio" || msg === "assets") {
-        setHistory(prev => [...prev, { 
-          type: 'agent', 
-          content: `LEDGER_SNAPSHOT [${new Date().toLocaleTimeString()}]:\n• STRK: ${balances.STRK}\n• ETH: ${balances.ETH}\n• USDC: ${balances.USDC}\nSYNC_STATUS: Accepted_on_L2` 
-        }]);
+        await persistUser(input);
+        const reply = `LEDGER_SNAPSHOT [${new Date().toLocaleTimeString()}]:\n• STRK: ${balances.STRK}\n• ETH: ${balances.ETH}\n• USDC: ${balances.USDC}\nSYNC_STATUS: Accepted_on_L2`;
+        setHistory(prev => [...prev, { type: 'agent', content: reply }]);
+        await persistAgent(reply);
         fetchAgentBalances();
         return true;
       }
 
       if (msg === 'send' || msg === 'transfer') {
+        await persistUser(input);
         fetchAgentBalances();
         setGuidedConfig({ action: 'send', step: 1 });
-        setHistory(prev => [...prev, { type: 'agent', content: "Which token? (Select: STRK / ETH / USDC)" }]);
+        const r = "Which token? (Select: STRK / ETH / USDC)";
+        setHistory(prev => [...prev, { type: 'agent', content: r }]);
+        await persistAgent(r);
         return true;
       }
       if (msg === 'swap') {
+        await persistUser(input);
         fetchAgentBalances();
         setGuidedConfig({ action: 'swap', step: 1 });
-        setHistory(prev => [...prev, { type: 'agent', content: "From which token? (Select: STRK / ETH / USDC)" }]);
+        const r = "From which token? (Select: STRK / ETH / USDC)";
+        setHistory(prev => [...prev, { type: 'agent', content: r }]);
+        await persistAgent(r);
         return true;
       }
       if (msg === 'lend' || msg === 'deposit') {
+        await persistUser(input);
         fetchAgentBalances();
         setGuidedConfig({ action: 'lend', step: 1 });
-        setHistory(prev => [...prev, { type: 'agent', content: "Which token? (Select: STRK / ETH / USDC)" }]);
+        const r = "Which token? (Select: STRK / ETH / USDC)";
+        setHistory(prev => [...prev, { type: 'agent', content: r }]);
+        await persistAgent(r);
         return true;
       }
       if (msg === 'stake') {
+        await persistUser(input);
         fetchAgentBalances();
         setGuidedConfig({ action: 'stake', step: 1 });
-        setHistory(prev => [...prev, { type: 'agent', content: "Which token? (Select: STRK / ETH / USDC)" }]);
+        const r = "Which token? (Select: STRK / ETH / USDC)";
+        setHistory(prev => [...prev, { type: 'agent', content: r }]);
+        await persistAgent(r);
         return true;
       }
       if (msg === 'withdraw') {
@@ -569,17 +664,32 @@ export function StarkAgent() {
 
     setIsParsing(true);
     try {
+      // PERSIST_USER_MESSAGE: Anchor user input to the backend
+      const me = normalizeAddress(address);
+      await supabase.from("messages").insert([{
+        sender_address: me,
+        receiver_address: STARK_AGENT_ID,
+        content: userMsg,
+        type: "text"
+      }]);
+
       // GEMINI_COGNITIVE_BRIDGE: Now strictly returns educational content
       const result = await parseCommand(userMsg, history);
       
       const content = result.content || "INTENT_AMBIGUITY: I detected an informational query but my output buffer was empty. Please rephrase.";
-      
-      // ORACLE_RESPONSE: All AI outputs are treated as educational chat
-      setHistory(prev => [...prev, { 
-        type: 'agent', 
-        content: content.replace(/type:\s*chat/gi, "").replace(/content:\s*/gi, "").trim() 
+      const cleanContent = content.replace(/type:\s*chat/gi, "").replace(/content:\s*/gi, "").trim();
+
+      // PERSIST_AGENT_REPLY: Anchor AI response to the backend
+      await supabase.from("messages").insert([{
+        sender_address: STARK_AGENT_ID,
+        receiver_address: me,
+        content: cleanContent,
+        type: "text"
       }]);
 
+      if (isMounted.current) {
+        setHistory(prev => [...prev, { type: 'agent', content: cleanContent }]);
+      }
     } catch (err: any) {
       setHistory(prev => [...prev, { type: 'error', content: err.message || "COULD_NOT_PARSE_COMMAND_SEQUENCE" }]);
     } finally {
@@ -677,12 +787,41 @@ export function StarkAgent() {
           throw new Error("ACTION_NOT_YET_SUPPORTED_ON_MAINNET");
       }
 
-      setHistory(prev => [...prev, { type: 'agent', content: `TX_BROADCAST_SUCCESS: Action submitted to Starknet.` }]);
+      const hash = tx?.transaction_hash || "";
+      const explorerLink = hash ? `\nVIEW_ON_EXPLORER: https://voyager.online/tx/${hash}` : "";
+      const broadcastMsg = `TX_BROADCAST_SUCCESS: Action submitted to Starknet.${explorerLink}`;
+      
+      setHistory(prev => [...prev, { type: 'agent', content: broadcastMsg }]);
+      
+      // PERSIST_BROADCAST: Anchor the submission to the backend
+      if (address) {
+        const me = normalizeAddress(address);
+        await supabase.from("messages").insert([{
+          sender_address: STARK_AGENT_ID,
+          receiver_address: me,
+          content: broadcastMsg,
+          type: "text"
+        }]);
+      }
+
       showDiagnostic("AGENT_ACTION: Transaction dispatched.", "info");
       setParsedIntent(null);
       
       await tx.wait();
-      setHistory(prev => [...prev, { type: 'agent', content: "FINALIZATION_SUCCESS: Transaction reached 'Accepted on L2' state." }]);
+      
+      const finalMsg = "FINALIZATION_SUCCESS: Transaction reached 'Accepted on L2' state.";
+      setHistory(prev => [...prev, { type: 'agent', content: finalMsg }]);
+
+      // PERSIST_FINALIZATION: Anchor the confirmation to the backend
+      if (address) {
+        const me = normalizeAddress(address);
+        await supabase.from("messages").insert([{
+          sender_address: STARK_AGENT_ID,
+          receiver_address: me,
+          content: finalMsg,
+          type: "text"
+        }]);
+      }
       
       // POLLING_SYNC: Instead of a static delay, we poll until the balance actually changes
       let attempts = 0;
@@ -826,11 +965,19 @@ export function StarkAgent() {
     <div className="flex-1 flex flex-col bg-[#0e1016] border-2 border-white/5 relative overflow-hidden shadow-[20px_20px_0px_rgba(0,0,0,0.5)]">
       {/* Terminal Header */}
       <div className="bg-white/5 border-b border-white/10 p-4 flex justify-between items-center shrink-0">
-         <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
             <CpuIcon className="w-4 h-4 text-[#0af0ff] animate-pulse" />
-            <span className="text-[10px] tracking-[4px] text-white/40 uppercase">STARKAGENT_CORP_v1.0.4</span>
-         </div>
+            <span className="text-[10px] tracking-[4px] text-white/40 uppercase">STARKAGENT_CORP_v1.1.0_PERSISTENT</span>
+          </div>
           <div className="flex items-center gap-4">
+             <button 
+               onClick={handleClearHistory}
+               className="p-2 text-white/20 hover:text-red-400 transition-all group relative mr-2"
+               title="Clear History"
+             >
+                <Trash2 className="w-4 h-4" />
+                <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 border border-white/10 px-3 py-1.5 text-[8px] font-mono whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-50 rounded-sm">MEM_PURGE_0x7F</span>
+             </button>
              <div className="flex bg-[#1a1d28] border border-white/10 px-2 py-0.5 rounded-sm gap-3">
                 <div className="flex items-center gap-1.5 border-r border-white/5 pr-3">
                    <div className="w-1.5 h-1.5 rounded-full bg-[#c8ff00]" />
