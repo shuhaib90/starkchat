@@ -85,7 +85,7 @@ export function StakingHub() {
     }
   }, [selectedValidator]);
 
-  const fetchStakingData = useCallback(async (): Promise<ValidatorPool[]> => {
+  const fetchStakingData = useCallback(async (isRetry = false): Promise<ValidatorPool[]> => {
     // Pause all background activity while user is interacting with modal to prevent glitches
     if (!sdk || selectedValidator) {
       if (!sdk) setIsLoading(false);
@@ -94,6 +94,7 @@ export function StakingHub() {
 
     try {
       setIsLoading(true);
+      const { rotateRpc } = useWallet(); // Get rotateRpc for failover
       
       const vList = Object.values(mainnetValidators);
       
@@ -191,6 +192,21 @@ export function StakingHub() {
       return processed;
     } catch (e: any) {
       console.error("Staking sync failed", e);
+      
+      // ACTIVE_FAILOVER: Trigger node rotation if the RPC node is struggling
+      const isNetworkError = e.message?.includes("fetch") || 
+                            e.message?.includes("Load") || 
+                            e.message?.includes("network") ||
+                            e.message?.includes("RpcError");
+                            
+      if (isNetworkError && !isRetry) {
+        const { rotateRpc } = useWallet();
+        rotateRpc();
+        return new Promise(resolve => {
+          setTimeout(() => resolve(fetchStakingData(true)), 1500);
+        });
+      }
+      
       showDiagnostic(`SYNC_ERROR: ${e.message}`, "error");
       return [];
     } finally {

@@ -100,18 +100,24 @@ export function SwapHub() {
       const formatted = (Number(raw) / Math.pow(10, tokenIn.decimals)).toFixed(4);
       setBalance(formatted);
       return formatted;
-    } catch (err) {
+    } catch (err: any) {
       console.error("Balance fetch failed", err);
+      
+      // ACTIVE_FAILOVER: Trigger node rotation if the RPC is struggling
+      if (err?.message?.includes("RpcError") || err?.message?.includes("failed to fetch")) {
+         rotateRpc();
+      }
+
       if (retryCount < 1) {
         return new Promise(resolve => {
-          setTimeout(() => resolve(fetchBalance(retryCount + 1)), 1000);
+          setTimeout(() => resolve(fetchBalance(retryCount + 1)), 1500);
         });
       }
       return "0.0000";
     } finally {
       setIsFetchingBalance(false);
     }
-  }, [address, provider, tokenIn]);
+  }, [address, provider, tokenIn, rotateRpc]);
 
   const pollForBalanceChange = async (oldBal: string) => {
     let attempts = 0;

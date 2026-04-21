@@ -152,15 +152,18 @@ export function SimpleEarn() {
       return processedMarkets;
     } catch (err: any) {
       console.error("[SimpleEarn] Data fetch failed:", err);
-      const isNetworkError = err.message?.includes("fetch") || err.message?.includes("Load") || err.message?.includes("network");
+      const isNetworkError = err.message?.includes("fetch") || 
+                            err.message?.includes("Load") || 
+                            err.message?.includes("network") ||
+                            err.message?.includes("RpcError");
       
       if (isNetworkError && !isRetry && retryCount < 5) {
-        console.log(`[SimpleEarn] Network error detected. Attempting rotation ${retryCount + 1}/5...`);
+        console.log(`[SimpleEarn] RPC or Network error detected. Attempting rotation ${retryCount + 1}/5...`);
         rotateRpc();
         setRetryCount(prev => prev + 1);
         // Delay slightly before retrying
         return new Promise(resolve => {
-          setTimeout(() => resolve(fetchData(true)), 800);
+          setTimeout(() => resolve(fetchData(true)), 1200);
         });
       }
       
