@@ -177,14 +177,14 @@ export function SimpleEarn() {
 
   const pollForSimpleEarnChange = async () => {
     let attempts = 0;
-    const oldState = JSON.stringify(markets.map(m => m.supplied));
+    const oldState = markets.map(m => m.supplied).join('|');
     const check = async () => {
       if (attempts > 8) {
          showDiagnostic("SYNC: Complete (timeout).", "info");
          return;
       }
       const newData = await fetchData();
-      const newState = JSON.stringify(newData?.map((m: any) => m.supplied));
+      const newState = newData?.map((m: any) => m.supplied).join('|');
       
       if (newState === oldState) {
         attempts++;
@@ -202,7 +202,9 @@ export function SimpleEarn() {
     
     // FETCH_SYNC: Trigger initial scan and allow manual refreshes
     fetchData();
-  }, [address, lendingClient, provider]); // Re-sync if dependencies change
+    const interval = setInterval(() => fetchData(), 30000);
+    return () => clearInterval(interval);
+  }, [address, lendingClient, provider]);
 
 
   const handleAction = async () => {

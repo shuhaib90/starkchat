@@ -38,7 +38,7 @@ interface SwapTx {
 }
 
 export function SwapHub() {
-  const { wallet, showDiagnostic, connectWallet, address, provider } = useWallet();
+  const { wallet, showDiagnostic, connectWallet, address, provider, rotateRpc } = useWallet();
   const [tokenIn, setTokenIn] = useState(SUPPORTED_TOKENS[0]);
   const [tokenOut, setTokenOut] = useState(SUPPORTED_TOKENS[2]);
   const [amountIn, setAmountIn] = useState("");
@@ -140,7 +140,7 @@ export function SwapHub() {
 
   useEffect(() => {
     fetchBalance();
-    const interval = setInterval(fetchBalance, 30000);
+    const interval = setInterval(() => fetchBalance(), 30000);
     return () => clearInterval(interval);
   }, [fetchBalance]);
 

@@ -36,7 +36,7 @@ interface ValidatorPool {
 }
 
 export function StakingHub() {
-  const { sdk, wallet, address, showDiagnostic, connectWallet } = useWallet();
+  const { sdk, wallet, address, showDiagnostic, connectWallet, rotateRpc } = useWallet();
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [validators, setValidators] = useState<ValidatorPool[]>([]);
@@ -94,7 +94,6 @@ export function StakingHub() {
 
     try {
       setIsLoading(true);
-      const { rotateRpc } = useWallet(); // Get rotateRpc for failover
       
       const vList = Object.values(mainnetValidators);
       
@@ -200,7 +199,6 @@ export function StakingHub() {
                             e.message?.includes("RpcError");
                             
       if (isNetworkError && !isRetry) {
-        const { rotateRpc } = useWallet();
         rotateRpc();
         return new Promise(resolve => {
           setTimeout(() => resolve(fetchStakingData(true)), 1500);
@@ -216,14 +214,14 @@ export function StakingHub() {
 
   const pollForStakingChange = async () => {
     let attempts = 0;
-    const oldState = JSON.stringify(validators.map(v => v.userPosition?.staked?.toBase() || "0"));
+    const oldState = validators.map(v => v.userPosition?.staked?.toBase()?.toString() || "0").join('|');
     const check = async () => {
       if (attempts > 8) {
          showDiagnostic("SYNC: Complete (timeout).", "info");
          return;
       }
       const newData = await fetchStakingData();
-      const newState = JSON.stringify(newData?.map((v: any) => v.userPosition?.staked?.toBase() || "0"));
+      const newState = newData?.map((v: any) => v.userPosition?.staked?.toBase()?.toString() || "0").join('|');
       
       if (newState === oldState) {
         attempts++;
@@ -512,7 +510,7 @@ export function StakingHub() {
                </button>
              ) : (
                <button 
-                 onClick={fetchStakingData}
+                 onClick={() => fetchStakingData()}
                  className="text-[#c8ff00] font-unbounded text-[10px] tracking-widest hover:underline"
                >
                   FORCE_PROTOCOL_RESCAN
