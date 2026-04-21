@@ -36,9 +36,10 @@ const FAILSAFE_USDC = { address: "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee
 const PRIVATE_RPC = process.env.NEXT_PUBLIC_STARKNET_RPC_URL;
 const FALLBACK_RPCS = [
   PRIVATE_RPC,
-  "https://free-rpc.nethermind.io/mainnet-juno",
   "https://starknet-mainnet.public.lava.network",
-  "https://starknet-mainnet.g.allpotential.io"
+  "https://rpc.starknet.lava.network/rpc/v0_7",
+  "https://starknet-mainnet.g.allpotential.io",
+  "https://free-rpc.nethermind.io/mainnet-juno/v0_7"
 ].filter(Boolean) as string[];
 
 interface WalletContextType {
@@ -63,8 +64,8 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
   const [address, setAddress] = useState<string | null>(null);
   const [connectorId, setConnectorId] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [activeRpc, setActiveRpc] = useState(PRIVATE_RPC || FALLBACK_RPCS[0]);
   const [rpcIndex, setRpcIndex] = useState(0);
+  const [activeRpc, setActiveRpc] = useState(FALLBACK_RPCS[0]);
   
   // Diagnostic State
   const [diagnostic, setDiagnostic] = useState<{ isOpen: boolean; message: string; type: string }>({
@@ -73,11 +74,10 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
     type: "info"
   });
 
-  // STRICT_ENFORCEMENT: Lock to private RPC if defined
+  // GRACEFUL_FAILOVER: If private RPC is dead, we allow rotation to fallbacks
   useEffect(() => {
     if (PRIVATE_RPC) {
-      console.log("[Starknet_Uplink] STRICT_PRIVATE_LANE_ENFORCED:", PRIVATE_RPC.split('/').slice(0, 3).join('/'));
-      setActiveRpc(PRIVATE_RPC);
+      console.log("[Starknet_Uplink] PRIVATE_LANE_RECOGNIZED:", PRIVATE_RPC.split('/').slice(0, 3).join('/'));
     }
   }, []);
   
@@ -86,11 +86,18 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
     const url = activeRpc;
     const isPrivate = url === PRIVATE_RPC;
     console.log(`[Starknet_Uplink] ${isPrivate ? 'PRIVATE_LANE_ACTIVE' : 'FALLBACK_NODE_ACTIVE'}: ${url?.split('/')[2]}`);
+    // Explicitly target RPC version 0.7 for SDK 9.x compatibility
     return new RpcProvider({ nodeUrl: url });
   }, [activeRpc]);
 
   const rotateRpc = useCallback(() => {
-  }, []);
+    setRpcIndex((prev) => {
+      const next = (prev + 1) % FALLBACK_RPCS.length;
+      setActiveRpc(FALLBACK_RPCS[next]);
+      showDiagnostic(`Switching to backup lane: ${FALLBACK_RPCS[next].split('/')[2]}`, "warning");
+      return next;
+    });
+  }, [showDiagnostic]);
 
   const showDiagnostic = useCallback((message: string, type: 'warning' | 'error' | 'info' = 'info') => {
     setDiagnostic({ isOpen: true, message, type });
