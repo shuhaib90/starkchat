@@ -90,6 +90,12 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
     return new RpcProvider({ nodeUrl: url });
   }, [activeRpc]);
 
+  const showDiagnostic = useCallback((message: string, type: 'warning' | 'error' | 'info' = 'info') => {
+    setDiagnostic({ isOpen: true, message, type });
+    // Auto-close after 8 seconds
+    setTimeout(() => setDiagnostic(prev => ({ ...prev, isOpen: false })), 8000);
+  }, []);
+
   const rotateRpc = useCallback(() => {
     setRpcIndex((prev) => {
       const next = (prev + 1) % FALLBACK_RPCS.length;
@@ -98,12 +104,6 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
       return next;
     });
   }, [showDiagnostic]);
-
-  const showDiagnostic = useCallback((message: string, type: 'warning' | 'error' | 'info' = 'info') => {
-    setDiagnostic({ isOpen: true, message, type });
-    // Auto-close after 8 seconds
-    setTimeout(() => setDiagnostic(prev => ({ ...prev, isOpen: false })), 8000);
-  }, []);
 
   useEffect(() => {
     // Initialize on mount with our robust provider
