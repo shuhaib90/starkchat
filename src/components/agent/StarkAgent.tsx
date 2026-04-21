@@ -25,7 +25,7 @@ import {
   VesuLendingProvider,
   fromAddress
 } from "starkzap";
-import { uint256 } from "starknet";
+import { uint256, num } from "starknet";
 
 
 
@@ -56,38 +56,67 @@ export function StarkAgent() {
   const [lendingBalances, setLendingBalances] = useState({ STRK: "0.00", ETH: "0.00", USDC: "0.00" });
   const [isFetchingBalances, setIsFetchingBalances] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const fetchAgentBalances = useCallback(async () => {
     if (!address || !provider) return;
     try {
-      setIsFetchingBalances(true);
+      if (isMounted.current) setIsFetchingBalances(true);
+      
+      // PARITY_REGISTRY: Monitor both Native and Bridged pools for maximum portfolio awareness
       const targets = [
         { symbol: "STRK", address: TOKEN_REGISTRY.STRK, decimals: 18 },
         { symbol: "ETH", address: TOKEN_REGISTRY.ETH, decimals: 18 },
-        { symbol: "USDC", address: TOKEN_REGISTRY.USDC, decimals: 6 }
+        { symbol: "USDC_NATIVE", address: TOKEN_REGISTRY.USDC_NATIVE, decimals: 6 },
+        { symbol: "USDC_E", address: TOKEN_REGISTRY.USDC_E, decimals: 6 }
       ];
 
-      const results: any = {};
-      for (const t of targets) {
+      // PROTOCOL_ENFORCEMENT: Normalize address to strict hex format for v0.7 compliant queries
+      const normalizedUser = num.toHex(address);
+
+      const balancePromises = targets.map(async (t) => {
         try {
           const res = await provider.callContract({
             contractAddress: t.address,
             entrypoint: "balanceOf",
-            calldata: [address]
+            calldata: [normalizedUser]
           });
           const raw = uint256.uint256ToBN({ low: res[0], high: res[1] });
-          results[t.symbol] = (Number(raw) / Math.pow(10, t.decimals)).toFixed(4);
+          return { symbol: t.symbol, val: (Number(raw) / Math.pow(10, t.decimals)) };
         } catch (e) {
-          results[t.symbol] = "0.0000";
+          console.warn(`[StarkAgent] Failed to fetch ${t.symbol}:`, e);
+          return { symbol: t.symbol, val: 0 };
         }
+      });
+
+      const results = await Promise.all(balancePromises);
+      
+      const finalBalances: any = { STRK: "0.00", ETH: "0.00", USDC: "0.00" };
+      let totalUsdc = 0;
+
+      results.forEach(r => {
+        if (r.symbol === "STRK") finalBalances.STRK = r.val.toFixed(4);
+        if (r.symbol === "ETH") finalBalances.ETH = r.val.toFixed(4);
+        if (r.symbol === "USDC_NATIVE" || r.symbol === "USDC_E") {
+          totalUsdc += r.val;
+        }
+      });
+
+      finalBalances.USDC = totalUsdc.toFixed(4);
+
+      if (isMounted.current) {
+        setBalances(finalBalances);
+        fetchLendingBalances();
       }
-      setBalances(results);
-      // SYNC_LENDING: Automatically refresh lending positions when wallet balance updates
-      fetchLendingBalances();
     } catch (err) {
       console.error("[StarkAgent] Ledger fetch failed", err);
     } finally {
-      setIsFetchingBalances(false);
+      if (isMounted.current) setIsFetchingBalances(false);
     }
   }, [address, provider]);
 
