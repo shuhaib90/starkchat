@@ -158,8 +158,7 @@ export function SimpleEarn() {
                             err.message?.includes("RpcError");
       
       if (isNetworkError && !isRetry && retryCount < 5) {
-        console.log(`[SimpleEarn] RPC or Network error detected. Attempting rotation ${retryCount + 1}/5...`);
-        rotateRpc();
+        console.log(`[SimpleEarn] RPC or Network error detected. Attempting retry ${retryCount + 1}/5...`);
         setRetryCount(prev => prev + 1);
         // Delay slightly before retrying
         return new Promise(resolve => {

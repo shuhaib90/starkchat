@@ -192,14 +192,8 @@ export function StakingHub() {
     } catch (e: any) {
       console.error("Staking sync failed", e);
       
-      // ACTIVE_FAILOVER: Trigger node rotation if the RPC node is struggling
-      const isNetworkError = e.message?.includes("fetch") || 
-                            e.message?.includes("Load") || 
-                            e.message?.includes("network") ||
-                            e.message?.includes("RpcError");
-                            
       if (isNetworkError && !isRetry) {
-        rotateRpc();
+        // SILENT_RETRY: Keep everything on the private Alchemy lane
         return new Promise(resolve => {
           setTimeout(() => resolve(fetchStakingData(true)), 1500);
         });

@@ -105,7 +105,7 @@ export function SwapHub() {
       
       // ACTIVE_FAILOVER: Trigger node rotation if the RPC is struggling
       if (err?.message?.includes("RpcError") || err?.message?.includes("failed to fetch")) {
-         rotateRpc();
+         // SILENT_LOG: Alchemy lane stuttering
       }
 
       if (retryCount < 1) {
