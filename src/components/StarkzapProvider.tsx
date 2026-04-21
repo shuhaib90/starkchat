@@ -32,15 +32,8 @@ const FAILSAFE_STRK = { address: STRK_TOKEN_ADDRESS, decimals: 18, symbol: "STRK
 const FAILSAFE_ETH = { address: ETH_TOKEN_ADDRESS, decimals: 18, symbol: "ETH" };
 const FAILSAFE_USDC = { address: "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8", decimals: 6, symbol: "USDC.e" };
 
-// Reliable RPC fallbacks - Prioritizing Private RPC if available
 const PRIVATE_RPC = process.env.NEXT_PUBLIC_STARKNET_RPC_URL;
-const FALLBACK_RPCS = [
-  PRIVATE_RPC,
-  "https://starknet-mainnet.public.lava.network",
-  "https://rpc.starknet.lava.network/rpc/v0_7",
-  "https://starknet-mainnet.g.allpotential.io",
-  "https://free-rpc.nethermind.io/mainnet-juno/v0_7"
-].filter(Boolean) as string[];
+const FALLBACK_RPCS = [PRIVATE_RPC].filter(Boolean) as string[];
 
 interface WalletContextType {
   sdk: any;
@@ -97,6 +90,8 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const rotateRpc = useCallback(() => {
+    if (FALLBACK_RPCS.length <= 1) return; // Dedicated private lane active
+    
     setRpcIndex((prev) => {
       const next = (prev + 1) % FALLBACK_RPCS.length;
       setActiveRpc(FALLBACK_RPCS[next]);
