@@ -231,7 +231,7 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
           <span className="font-bebas text-3xl tracking-tighter text-white group-hover:text-[#c8ff00] transition-colors">GITHUB_REPO</span>
         </a>
         
-        <a href="https://x.com/zenvic00" target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 group">
+        <a href="https://x.com/Zenvic_" target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 group">
           <div className="p-2 bg-white/5 border border-white/10 group-hover:bg-[#0af0ff]/10 group-hover:border-[#0af0ff]/40 transition-all">
             <svg className="w-6 h-6 text-white group-hover:text-[#0af0ff] fill-current" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
           </div>
@@ -248,7 +248,7 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
       
       <div className="mt-20 flex flex-col items-center gap-8 opacity-40 hover:opacity-100 transition-opacity duration-500">
         <a 
-          href="https://x.com/zenvic00" 
+          href="https://x.com/Zenvic_" 
           target="_blank" 
           rel="noopener noreferrer" 
           className="group flex flex-col items-center gap-3"

@@ -35,7 +35,7 @@ export default function Home() {
       <header className="flex justify-between items-center w-full max-w-6xl mx-auto h-20 bg-[#0e1016]/80 backdrop-blur-xl border-2 border-white/10 shadow-[8px_8px_0px_#06070a] rounded-lg px-6 sm:px-8 mb-12 z-50 shrink-0">
         <div className="flex items-center gap-6">
           <a 
-            href="https://x.com/zenvic00" 
+            href="https://x.com/Zenvic_" 
             target="_blank" 
             rel="noopener noreferrer"
             className="group relative transition-all active:scale-90 hidden xs:block"
@@ -68,7 +68,7 @@ export default function Home() {
                 <p className="text-[9px] font-unbounded text-[#c8ff00] tracking-[2px] uppercase">Node_Signal.01</p>
                 <span className="text-white/20 text-[9px]">//</span>
                 <a 
-                  href="https://x.com/zenvic00" 
+                  href="https://x.com/Zenvic_" 
                   target="_blank" 
                   rel="noopener noreferrer" 
                   className="text-[9px] font-unbounded text-[#0af0ff] hover:text-[#c8ff00] tracking-[2px] uppercase transition-colors"
