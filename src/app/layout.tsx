@@ -4,6 +4,7 @@ import "./globals.css";
 import { StarkzapProvider } from "@/components/StarkzapProvider";
 import { RealtimeNotifier } from "@/components/RealtimeNotifier";
 import { SignalLoader } from "@/components/SignalLoader";
+import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -29,6 +30,7 @@ export default function RootLayout({
             {children}
           </div>
         </StarkzapProvider>
+        <Analytics />
       </body>
     </html>
   );
