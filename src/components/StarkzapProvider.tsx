@@ -398,6 +398,7 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
       
       const rawWallet = result.wallet as any;
       if (rawWallet && result.connector) {
+        // [CHAIN_ID_PATCH] Robust detection for Mainnet across all wallet response formats
         const chainId = await rawWallet.provider?.getChainId?.();
         const chainIdStr = chainId?.toString().toLowerCase();
         
@@ -405,6 +406,7 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
           chainIdStr === "sn_main" || 
           chainIdStr === "0x534e5f4d41494e" || 
           chainIdStr === "23448594291968334" ||
+          chainIdStr === "0x534e5f4d41494e4e4554" || // Extended Braavos format
           chainIdStr.includes("main");
 
         if (!isMainnet) {
@@ -413,10 +415,20 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        let account = result.account || rawWallet.account;
+        // [ACCOUNT_DISCOVERY_PATCH] Multi-path retrieval for Braavos/Argent variability
+        let account = result.account || rawWallet.account || (rawWallet as any).account;
         
         if (!account && typeof result.connector.account === 'function') {
            account = await result.connector.account(provider);
+        }
+
+        // [DIRECT_FALLBACK] Handle cases where StarknetKit fails to extract the provider
+        if (!account && result.connector.id === 'braavos' && typeof window !== 'undefined') {
+          const bWallet = (window as any).starknet_braavos;
+          if (bWallet && bWallet.account) {
+            console.log("[Starknet_Uplink] DIRECT_BRAAVOS_HANDSHAKE_TRIGGERED");
+            account = bWallet.account;
+          }
         }
 
         if (account) {
@@ -428,6 +440,8 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
             setWallet(account); 
             setAddress(normalizeAddress(account.address));
           }
+        } else {
+           showDiagnostic(`${result.connector.id?.toUpperCase()}_CONNECTION_ERROR: Account permission rejected or unavailable.`, "error");
         }
         
         setConnectorId(result.connector.id);
