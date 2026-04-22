@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Zap, MessageSquare, ArrowRight, Terminal, BarChart3, Cpu, Coins, Landmark, ArrowRightLeft } from "lucide-react";
+import { Zap, MessageSquare, ArrowRight, Terminal, BarChart3, Cpu, Coins, Landmark, ArrowRightLeft, ShieldCheck } from "lucide-react";
 import Image from "next/image";
 import { useWallet } from "@/components/StarkzapProvider";
 import { RecentChats } from "@/components/RecentChats";
