@@ -159,6 +159,28 @@ export default function Home() {
               </div>
             </form>
 
+            {/* Quick Navigation Actions */}
+            <div className="w-full flex flex-wrap justify-center gap-4 mb-20 animate-fade-in stagger-2">
+              {[
+                { label: "SHIELD_TRANSFER", icon: ShieldCheck, href: "/shield", color: "text-indigo-400", border: "border-indigo-500/30", bg: "bg-indigo-500/5" },
+                { label: "SWAP_ASSETS", icon: ArrowRightLeft, href: "/defi", color: "text-[#0af0ff]", border: "border-[#0af0ff]/30", bg: "bg-[#0af0ff]/5" },
+                { label: "STAKE_YIELD", icon: Coins, href: "/defi", color: "text-[#c8ff00]", border: "border-[#c8ff00]/30", bg: "bg-[#c8ff00]/5" },
+                { label: "LENDING_PORTAL", icon: Landmark, href: "/defi", color: "text-emerald-400", border: "border-emerald-500/30", bg: "bg-emerald-500/5" },
+              ].map((action) => (
+                <Link
+                  key={action.label}
+                  href={action.href}
+                  className={`flex flex-col items-center justify-center gap-3 px-8 py-6 ${action.bg} border-2 ${action.border} hover:border-white transition-all group relative min-w-[160px] shadow-[4px_4px_0px_#06070a] active:scale-95`}
+                >
+                  <action.icon className={`w-6 h-6 ${action.color} group-hover:scale-110 transition-transform`} />
+                  <span className={`font-bebas text-sm tracking-[2px] ${action.color} group-hover:text-white`}>{action.label}</span>
+                  
+                  {/* Decorative corner */}
+                  <div className={`absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 ${action.border} group-hover:border-white`} />
+                </Link>
+              ))}
+            </div>
+
             <RecentChats />
           </div>
         ) : (
