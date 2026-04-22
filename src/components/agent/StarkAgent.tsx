@@ -1280,6 +1280,7 @@ export function StarkAgent() {
                   <div className="flex gap-2">
                     <button onClick={() => setInput("lend")} className="text-[9px] font-bold text-[#e2e8f0]/40 hover:text-purple-400 transition-colors uppercase tracking-[2px] border border-white/5 hover:border-purple-400/30 px-3 py-1 bg-white/5">#Lend</button>
                     <button onClick={() => setInput("stake")} className="text-[9px] font-bold text-[#e2e8f0]/40 hover:text-purple-400 transition-colors uppercase tracking-[2px] border border-white/5 hover:border-purple-400/30 px-3 py-1 bg-white/5">#Stake</button>
+                    <button onClick={() => setInput("claim")} className="text-[9px] font-bold text-[#e2e8f0]/40 hover:text-purple-400 transition-colors uppercase tracking-[2px] border border-white/5 hover:border-purple-400/30 px-3 py-1 bg-white/5">#Claim</button>
                     <button onClick={() => setInput("withdraw")} className="text-[9px] font-bold text-[#e2e8f0]/40 hover:text-purple-400 transition-colors uppercase tracking-[2px] border border-white/5 hover:border-purple-400/30 px-3 py-1 bg-white/5">#Withdraw</button>
                   </div>
                </div>
