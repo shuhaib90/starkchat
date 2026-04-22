@@ -23,6 +23,119 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
+const StakingLoader = () => {
+  const [logs, setLogs] = useState<string[]>([]);
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    const sequence = [
+      "INITIALIZING_NEURAL_LINK...",
+      "SCANNING_STARKNET_SEQUENCER [v0.10.3]...",
+      "FETCHING_VALIDATOR_REGISTRY... OK",
+      "ESTABLISHING_POOL_HANDSHAKE: BRAAVOS...",
+      "ESTABLISHING_POOL_HANDSHAKE: KARNOT...",
+      "ESTABLISHING_POOL_HANDSHAKE: TWINSTAKE...",
+      "CALCULATING_NET_APR_ESTIMATES...",
+      "FINALIZING_FORENSIC_PROJECTION..."
+    ];
+
+    let current = 0;
+    const interval = setInterval(() => {
+      if (current < sequence.length) {
+        setLogs(prev => [...prev, sequence[current]]);
+        setProgress(Math.min(((current + 1) / sequence.length) * 100, 95));
+        current++;
+      } else {
+        clearInterval(interval);
+      }
+    }, 250);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="flex flex-col items-center justify-center py-32 relative overflow-hidden min-h-[500px]">
+      <div className="absolute inset-0 bg-[#c8ff00]/[0.02] pointer-events-none" />
+      
+      {/* Scanline Effect */}
+      <div className="absolute inset-0 pointer-events-none opacity-20 overflow-hidden">
+        <div className="w-full h-[2px] bg-[#c8ff00] animate-scanner-scan shadow-[0_0_15px_#c8ff00]" />
+      </div>
+
+      <div className="z-10 w-full max-w-lg space-y-12 px-6">
+        <div className="flex flex-col items-center space-y-6">
+          <div className="relative">
+            <RefreshCw className="w-16 h-16 text-[#c8ff00] animate-spin opacity-40 blur-[1px]" />
+            <div className="absolute inset-0 flex items-center justify-center">
+               <ShieldCheck className="w-6 h-6 text-[#c8ff00] animate-pulse" />
+            </div>
+          </div>
+          
+          <div className="text-center space-y-2">
+            <h3 className="font-bebas text-4xl tracking-[8px] text-white animate-pulse">PROTOCOL_SYNC</h3>
+            <p className="font-unbounded text-[8px] text-[#c8ff00]/60 tracking-[4px] uppercase">Neural_Scanner_Active_v1.0.42</p>
+          </div>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="space-y-3">
+          <div className="w-full h-1.5 bg-white/5 border border-white/10 relative overflow-hidden rounded-full">
+            <div 
+              className="absolute left-0 top-0 h-full bg-[#c8ff00] transition-all duration-300 ease-out shadow-[0_0_15px_rgba(200,255,0,0.5)]"
+              style={{ width: `${progress}%` }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
+          </div>
+          <div className="flex justify-between items-center text-[7px] font-mono text-white/30 uppercase tracking-widest">
+             <span>BIT_STREAM: {progress.toFixed(0)}%</span>
+             <span className="animate-pulse">STABILIZING_HANDSHAKE</span>
+          </div>
+        </div>
+
+        {/* Forensic Logs */}
+        <div className="bg-[#0e1016]/80 border border-white/5 p-6 rounded-sm font-mono text-[10px] space-y-1.5 min-h-[140px] shadow-2xl relative group">
+           <div className="absolute top-0 right-0 p-2 text-white/10 text-[8px]">LOG_RECORDS</div>
+           {logs.map((log, index) => (
+             <div key={index} className="flex gap-4 items-center animate-agent-in">
+                <span className="text-white/20 whitespace-nowrap">[{new Date().toLocaleTimeString([], { hour12: false })}]</span>
+                <span className={index === logs.length - 1 ? "text-[#c8ff00]" : "text-white/60"}>
+                  {log}
+                </span>
+                {index === logs.length - 1 && <span className="w-1.5 h-3 bg-[#c8ff00] animate-terminal-cursor" />}
+             </div>
+           ))}
+        </div>
+      </div>
+
+      <style jsx global>{`
+        @keyframes scannerScan {
+          0% { transform: translateY(-100px); opacity: 0; }
+          20% { opacity: 0.8; }
+          80% { opacity: 0.8; }
+          100% { transform: translateY(600px); opacity: 0; }
+        }
+        @keyframes shimmer {
+          from { transform: translateX(-100%); }
+          to { transform: translateX(100%); }
+        }
+        @keyframes terminalCursor {
+          0%, 100% { opacity: 0; }
+          50% { opacity: 1; }
+        }
+        .animate-scanner-scan {
+          animation: scannerScan 3s linear infinite;
+        }
+        .animate-shimmer {
+          animation: shimmer 1.5s linear infinite;
+        }
+        .animate-terminal-cursor {
+          animation: terminalCursor 0.8s infinite;
+        }
+      `}</style>
+    </div>
+  );
+};
+
 interface ValidatorPool {
   name: string;
   stakerAddress: string;
@@ -375,15 +488,9 @@ export function StakingHub() {
     }
   };
 
-  // LOADING_GUARD: Only show the full-screen sync overlay on the initial cold start.
-  // Once we have validator data, we handle any subsequent refreshes silently in the background.
+  // LOADING_GUARD: High-fidelity Neural Scanner
   if (isLoading && validators.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 animate-pulse relative z-50">
-        <RefreshCw className="w-10 h-10 text-[#c8ff00] animate-spin mb-4" />
-        <p className="font-bebas text-2xl tracking-widest opacity-20 uppercase">Syncing_Protocol_Validators</p>
-      </div>
-    );
+    return <StakingLoader />;
   }
 
   return (
