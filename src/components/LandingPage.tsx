@@ -26,6 +26,12 @@ import Image from "next/image";
 function FeatureCard({ feature, index }: { feature: any; index: number }) {
   const { style, onMouseMove, onMouseLeave } = useTilt(4);
   
+    const borderClass = feature.borderClass || "border-white/10 hover:border-[#c8ff00]/40";
+  const shadowClass = feature.shadowClass || "hover:shadow-[12px_12px_0px_#c8ff00]";
+  const tagTextClass = feature.tagTextClass || "text-[#c8ff00]/60";
+  const bgClass = feature.bgClass || "bg-white/[0.03]";
+  const isHighlighted = feature.highlight || false;
+  
   return (
     <div 
       onMouseMove={onMouseMove}
@@ -34,7 +40,7 @@ function FeatureCard({ feature, index }: { feature: any; index: number }) {
         ...style,
         animationDelay: `${0.4 + index * 0.08}s` 
       }}
-      className="animate-anti-gravity group relative p-8 bg-white/[0.03] border-2 border-white/10 hover:border-[#c8ff00]/40 transition-all duration-300 backdrop-blur-xl shadow-[4px_4px_0px_#0e1016] hover:shadow-[12px_12px_0px_#c8ff00] rounded-lg"
+      className={`animate-anti-gravity group relative p-8 ${bgClass} border-2 ${borderClass} transition-all duration-300 backdrop-blur-xl shadow-[4px_4px_0px_#0e1016] ${shadowClass} rounded-lg ${isHighlighted ? "transform sm:-translate-y-2 z-10" : ""}`}
     >
       <div 
         className="w-12 h-12 rounded-lg bg-black/40 border-2 flex items-center justify-center mb-6 transition-transform duration-200 group-hover:rotate-6 shadow-inner"
@@ -48,8 +54,8 @@ function FeatureCard({ feature, index }: { feature: any; index: number }) {
       </p>
       
       {/* Status tag */}
-      <div className="absolute top-4 right-4 px-2 py-0.5 bg-[#0e1016] border border-white/10 text-[9px] font-unbounded text-[#c8ff00]/60 uppercase tracking-widest">
-        LIVE
+      <div className={`absolute top-4 right-4 px-2 py-0.5 bg-[#0e1016] border border-white/10 text-[9px] font-unbounded ${tagTextClass} uppercase tracking-widest`}>
+        {isHighlighted ? "FEATURED" : "LIVE"}
       </div>
     </div>
   );
@@ -64,10 +70,43 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
       description: "Wallet-to-wallet private chats. Secure, fast, and fully decentralized messaging for the Starknet ecosystem."
     },
     {
+      icon: <Cpu className="w-5 h-5 text-[#c8ff00]" />,
+      borderColor: 'rgba(200, 255, 0, 0.6)',
+      bgClass: 'bg-[#c8ff00]/5',
+      borderClass: 'border-[#c8ff00]/40 hover:border-[#c8ff00]',
+      shadowClass: 'hover:shadow-[12px_12px_0px_#c8ff00]',
+      tagTextClass: 'text-[#c8ff00] font-bold',
+      highlight: true,
+      title: "AI AGENT",
+      description: "Interact with our intelligent StarkAgent to execute transactions, retrieve on-chain data, and automate your DeFi strategy."
+    },
+    {
+      icon: <ShieldCheck className="w-5 h-5 text-indigo-400" />,
+      borderColor: 'rgba(99, 102, 241, 0.6)',
+      bgClass: 'bg-indigo-500/5',
+      borderClass: 'border-indigo-500/40 hover:border-indigo-400',
+      shadowClass: 'hover:shadow-[12px_12px_0px_#818cf8]',
+      tagTextClass: 'text-indigo-400 font-bold',
+      highlight: true,
+      title: "CONFIDENTIAL TRANSFERS",
+      description: "Obfuscate your financial footprint using zero-knowledge proofs. Shield assets and execute ghost transfers securely."
+    },
+    {
       icon: <DollarSign className="w-5 h-5 text-[#c8ff00]" />,
       borderColor: 'rgba(200, 255, 0, 0.3)',
       title: "INSTANT PAYMENTS",
       description: "Send STRK and ETH directly within your chat bubbles. No need for complex address copying or tab switching."
+    },
+    {
+      icon: <ArrowRightLeft className="w-5 h-5 text-purple-400" />,
+      borderColor: 'rgba(168, 85, 247, 0.6)',
+      bgClass: 'bg-purple-500/5',
+      borderClass: 'border-purple-500/40 hover:border-purple-400',
+      shadowClass: 'hover:shadow-[12px_12px_0px_#c084fc]',
+      tagTextClass: 'text-purple-400 font-bold',
+      highlight: true,
+      title: "DEFI HUB",
+      description: "A centralized command center for your DeFi operations. Swap tokens, lend assets, and stake for yield with maximum efficiency."
     },
     {
       icon: <Lock className="w-5 h-5 text-magenta" />,
@@ -80,18 +119,6 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
       borderColor: 'rgba(255, 210, 77, 0.3)',
       title: "PAYMENT REQUESTS",
       description: "Streamlined Web3 invoicing. Request specific token amounts and get paid with a single tap from the receiver."
-    },
-    {
-      icon: <Bell className="w-5 h-5 text-[#ff2dff]" />,
-      borderColor: 'rgba(255, 45, 255, 0.3)',
-      title: "NODE NOTIFIER",
-      description: "Never miss a deal. Real-time browser and in-app notifications keep you updated on new messages and payments."
-    },
-    {
-      icon: <ShieldCheck className="w-5 h-5 text-[#0af0ff]" />,
-      borderColor: 'rgba(10, 240, 255, 0.3)',
-      title: "IDENTITY VAULT",
-      description: "Your wallet is your profile. Personalized avatars and verified on-chain addresses ensure trust in every chat."
     },
     {
       icon: <BarChart3 className="w-5 h-5 text-[#ffd24d]" />,
@@ -122,13 +149,13 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
         <h1 className="animate-anti-gravity [animation-delay:0.1s] text-[12vw] sm:text-[100px] font-bebas leading-[0.85] text-white tracking-tighter mb-8 flex flex-col">
           <span>THE FUTURE OF</span>
           <span className="relative">
-            <span className="absolute inset-0 bg-gradient-to-r from-[#c8ff00] to-[#0af0ff] bg-clip-text text-transparent opacity-80">WEB3 MESSAGING</span>
-            <span className="relative" style={{ WebkitTextStroke: "1.5px rgba(255,255,255,0.2)", color: "transparent" }}>WEB3 MESSAGING</span>
+            <span className="absolute inset-0 bg-gradient-to-r from-[#c8ff00] to-[#0af0ff] bg-clip-text text-transparent opacity-80">WEB3 INTERACTION</span>
+            <span className="relative" style={{ WebkitTextStroke: "1.5px rgba(255,255,255,0.2)", color: "transparent" }}>WEB3 INTERACTION</span>
           </span>
         </h1>
         
         <p className="animate-anti-gravity [animation-delay:0.2s] font-bebas text-sm sm:text-xl text-[#f0ede8]/40 max-w-4xl leading-relaxed mb-12 uppercase tracking-[6px]">
-          SEND MESSAGES // TRANSFER STRK // UNLOCK ENCRYPTED MESSAGES USING YOUR STARKNET WALLET
+          CHAT // AI AGENT // CONFIDENTIAL TRANSFER // SWAP // STAKE // LEND
         </p>
 
         {/* Braavos Disclaimer */}

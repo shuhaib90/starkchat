@@ -3,7 +3,7 @@
 import { ConnectWalletButton } from "@/components/ConnectWalletButton";
 import { ChatWindow } from "@/components/ChatWindow";
 import { UserAvatar } from "@/components/UserAvatar";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft, RefreshCw, Cpu, ArrowRightLeft } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -43,6 +43,18 @@ export default function ChatRoom() {
               <p className="text-[8px] font-unbounded text-[#0af0ff] tracking-[2px] uppercase opacity-40">Private Chat</p>
             </div>
           </div>
+        </div>
+        
+        {/* Quick Navigation Links */}
+        <div className="hidden lg:flex items-center gap-4">
+          <Link href="/agent" className="group flex items-center gap-2 hover:bg-[#c8ff00]/10 px-4 py-2 rounded-full border border-white/10 hover:border-[#c8ff00]/40 transition-all">
+            <Cpu className="w-4 h-4 text-white/40 group-hover:text-[#c8ff00] transition-colors" />
+            <span className="text-[10px] font-bebas text-white/50 group-hover:text-[#c8ff00] tracking-widest transition-colors">AGENT</span>
+          </Link>
+          <Link href="/defi" className="group flex items-center gap-2 hover:bg-purple-500/10 px-4 py-2 rounded-full border border-white/10 hover:border-purple-500/40 transition-all">
+            <ArrowRightLeft className="w-4 h-4 text-white/40 group-hover:text-purple-400 transition-colors" />
+            <span className="text-[10px] font-bebas text-white/50 group-hover:text-purple-400 tracking-widest transition-colors">DEFI HUB</span>
+          </Link>
         </div>
         
         <div className="flex items-center gap-6 scale-90 sm:scale-100">

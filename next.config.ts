@@ -7,9 +7,14 @@ const nextConfig: NextConfig = {
             "@hyperlane-xyz/sdk": false,
             "@hyperlane-xyz/registry": false,
             "@hyperlane-xyz/utils": false,
-            "@fatsolutions/tongo-sdk": false,
             "@solana/web3.js": false,
             "@metamask/sdk": false,
+        };
+
+        config.experiments = {
+            ...config.experiments,
+            topLevelAwait: true,
+            asyncWebAssembly: true,
         };
         
         if (!isServer) {

@@ -47,6 +47,60 @@ interface GuidedState {
   yearlyEarn?: string;
 }
 
+// STARKAGENT_UI_KIT: High-fidelity components for terminal interactions
+const AddressPill = ({ address }: { address: string }) => {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button 
+      onClick={copy}
+      className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-[rgba(0,229,255,0.1)] border border-[rgba(0,229,255,0.3)] rounded text-[#00ffd5] font-mono text-[10px] hover:bg-[rgba(0,229,255,0.2)] transition-all group"
+    >
+      {address.slice(0, 6)}...{address.slice(-4)}
+      {copied ? <Check className="w-2.5 h-2.5" /> : <span className="opacity-40 group-hover:opacity-100">📋</span>}
+    </button>
+  );
+};
+
+const ExplorerChip = ({ hash }: { hash: string }) => (
+  <a 
+    href={`https://voyager.online/tx/${hash}`}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-sm hover:bg-white/10 hover:border-[#c8ff00]/40 transition-all group"
+  >
+    <span className="text-[10px] font-mono text-white/60 group-hover:text-white uppercase tracking-widest">{hash.slice(0, 10)}...</span>
+    <ArrowRight className="w-3 h-3 text-[#c8ff00] group-hover:translate-x-0.5 transition-transform" />
+  </a>
+);
+
+const SuccessCard = ({ content }: { content: string }) => {
+  const hashMatch = content.match(/Hash:\s*(0x[a-fA-F0-9]+)/);
+  const hash = hashMatch ? hashMatch[1] : null;
+
+  return (
+    <div className="w-full max-w-md animate-success-reveal bg-gradient-to-br from-[rgba(0,255,136,0.1)] to-transparent border border-[rgba(0,255,136,0.4)] p-6 rounded-lg shadow-[0_0_30px_rgba(0,255,136,0.15)] relative overflow-hidden group">
+      <div className="absolute top-0 right-0 w-32 h-32 bg-[rgba(0,255,136,0.03)] rotate-45 translate-x-16 -translate-y-16 pointer-events-none" />
+      <div className="flex items-start gap-4 relative z-10">
+        <div className="w-10 h-10 rounded-full bg-[rgba(0,255,136,0.2)] flex items-center justify-center border border-[rgba(0,255,136,0.5)] shrink-0">
+          <Check className="w-6 h-6 text-[#00ff88]" />
+        </div>
+        <div className="flex-1">
+          <h4 className="font-bebas text-xl text-[#00ff88] tracking-widest mb-1 uppercase">Transmission Success</h4>
+          <p className="text-white/70 text-xs leading-relaxed font-mono mb-4">
+            Transaction has been broadcast to the Starknet Mainnet. Identity validated. Execution confirmed.
+          </p>
+          {hash && <ExplorerChip hash={hash} />}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export function StarkAgent() {
   const { sdk, wallet, address, connectWallet, showDiagnostic, provider, lendingContext } = useWallet();
   const [input, setInput] = useState("");
@@ -54,7 +108,48 @@ export function StarkAgent() {
   const [parsedIntent, setParsedIntent] = useState<any>(null);
   const [isExecuting, setIsExecuting] = useState(false);
   const [history, setHistory] = useState<{ type: 'user' | 'agent' | 'error', content: string }[]>([]);
+  const [bootSequence, setBootSequence] = useState<number>(0);
   const [guidedConfig, setGuidedConfig] = useState<GuidedState | null>(null);
+
+  // STARKAGENT_ANIMATION_ENGINE: Core keyframes for high-fidelity UI transitions
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.innerHTML = `
+      @keyframes agentFadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes successReveal {
+        0% { clip-path: inset(0 100% 0 0); filter: brightness(2); }
+        100% { clip-path: inset(0 0 0 0); filter: brightness(1); }
+      }
+      @keyframes glitchPulse {
+        0% { box-shadow: 0 0 5px rgba(200,255,0,0.2); }
+        50% { box-shadow: 0 0 20px rgba(200,255,0,0.4); }
+        100% { box-shadow: 0 0 5px rgba(200,255,0,0.2); }
+      }
+      .animate-agent-in { animation: agentFadeIn 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
+      .animate-success-reveal { animation: successReveal 0.8s cubic-bezier(0.19, 1, 0.22, 1) forwards; }
+      .animate-glitch-pulse { animation: glitchPulse 2s infinite; }
+    `;
+    document.head.appendChild(style);
+    return () => { document.head.removeChild(style); };
+  }, []);
+
+  // BOOT_SEQUENCE: Staggered entry for terminal aesthetics
+  useEffect(() => {
+    if (bootSequence < 4) {
+      const timer = setTimeout(() => setBootSequence(prev => prev + 1), 600);
+      return () => clearTimeout(timer);
+    }
+    // Initial welcome message after boot
+    if (bootSequence === 4 && history.length === 0) {
+      setHistory([{ 
+        type: 'agent', 
+        content: "STARKAGENT_OS [Version 1.0.42]\\n(c) 2025 Starknet Protocol Corp. All rights reserved.\\n\\nConnection established. Secure tunnel active.\\nI am your non-custodial DeFi assistant. How can I facilitate your on-chain operations today?" 
+      }]);
+    }
+  }, [bootSequence, history.length]);
   const [balances, setBalances] = useState({ STRK: "0.00", ETH: "0.00", USDC: "0.00" });
   const [lendingBalances, setLendingBalances] = useState({ STRK: "0.00", ETH: "0.00", USDC: "0.00" });
   const [isFetchingBalances, setIsFetchingBalances] = useState(false);
@@ -962,247 +1057,293 @@ export function StarkAgent() {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-[#0e1016] border-2 border-white/5 relative overflow-hidden shadow-[20px_20px_0px_rgba(0,0,0,0.5)]">
-      {/* Terminal Header */}
-      <div className="bg-white/5 border-b border-white/10 p-4 flex justify-between items-center shrink-0">
+    <div className="flex-1 flex flex-col bg-[#0e1016] border-2 border-white/5 relative overflow-hidden shadow-[20px_20px_0px_rgba(0,0,0,0.5)] font-mono">
+      {/* Visual Scanline Effect */}
+      <div className="absolute inset-0 pointer-events-none z-50 opacity-[0.03] overflow-hidden">
+        <div className="w-full h-2 bg-white animate-scanline" />
+      </div>
+
+      {/* Terminal Header — Fix 7 */}
+      <div className="bg-white/5 border-b border-white/10 p-4 flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0">
           <div className="flex items-center gap-3">
-            <CpuIcon className="w-4 h-4 text-[#0af0ff] animate-pulse" />
-            <span className="text-[10px] tracking-[4px] text-white/40 uppercase">STARKAGENT_CORP_v1.1.0_PERSISTENT</span>
+            <div className="flex items-center gap-2 px-2 py-1 bg-black/40 border border-[#0af0ff]/20 rounded-sm">
+              <CpuIcon className="w-3.5 h-3.5 text-[#0af0ff] animate-pulse" />
+              <span className="text-[10px] tracking-[2px] text-white/60 uppercase font-bold">● LIVE</span>
+            </div>
+            <span className="text-[9px] tracking-[4px] text-white/20 uppercase hidden lg:inline">STARKAGENT_CORP_v1.1.0_PERSISTENT</span>
           </div>
-          <div className="flex items-center gap-4">
-             <button 
-               onClick={handleClearHistory}
-               className="p-2 text-white/20 hover:text-red-400 transition-all group relative mr-2"
-               title="Clear History"
-             >
-                <Trash2 className="w-4 h-4" />
-                <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 border border-white/10 px-3 py-1.5 text-[8px] font-mono whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-50 rounded-sm">MEM_PURGE_0x7F</span>
-             </button>
-             <div className="flex bg-[#1a1d28] border border-white/10 px-2 py-0.5 rounded-sm gap-3">
-                <div className="flex items-center gap-1.5 border-r border-white/5 pr-3">
-                   <div className="w-1.5 h-1.5 rounded-full bg-[#c8ff00]" />
-                   <span className="text-[9px] font-mono text-white/40 uppercase">STRK:</span>
-                   <span className="text-[9px] font-mono text-[#c8ff00] font-bold">{balances.STRK}</span>
-                </div>
-                <div className="flex items-center gap-1.5 border-r border-white/5 pr-3">
-                   <div className="w-1.5 h-1.5 rounded-full bg-[#0af0ff]" />
-                   <span className="text-[9px] font-mono text-white/40 uppercase">ETH:</span>
-                   <span className="text-[9px] font-mono text-white font-bold">{balances.ETH}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                   <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
-                   <span className="text-[9px] font-mono text-white/40 uppercase">USDC:</span>
-                   <span className="text-[9px] font-mono text-white/60 font-bold">{balances.USDC}</span>
-                </div>
+
+          <div className="flex items-center gap-3">
+             <div className="flex gap-2">
+                {[
+                  { symbol: "STRK", val: balances.STRK, color: "#c8ff00" },
+                  { symbol: "ETH", val: balances.ETH, color: "#0af0ff" },
+                  { symbol: "USDC", val: balances.USDC, color: "#2775ca" }
+                ].map((asset) => (
+                  <div 
+                    key={asset.symbol}
+                    className={`flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-sm transition-opacity duration-500 ${Number(asset.val) === 0 ? 'opacity-40' : 'opacity-100'}`}
+                  >
+                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: asset.color }} />
+                    <span className="text-[10px] text-white/40 uppercase">{asset.symbol}</span>
+                    <span className="text-[10px] text-white font-bold">{asset.val}</span>
+                  </div>
+                ))}
              </div>
              
-             <div className="flex items-center gap-2 border-l border-white/10 pl-4">
-                <div className={`w-2 h-2 rounded-full ${isFetchingBalances ? 'bg-yellow-500 animate-pulse' : 'bg-[#c8ff00]'} `} />
-                <span className="text-[8px] text-white/40 uppercase tracking-widest">{isFetchingBalances ? 'SYNCING_LEDGER' : 'LEDGER_LIVE'}</span>
+             <div className="flex items-center gap-2 border-l border-white/10 pl-3">
+                <button 
+                  onClick={handleClearHistory}
+                  className="p-1.5 text-white/20 hover:text-red-400 transition-all group relative"
+                >
+                   <Trash2 className="w-3.5 h-3.5" />
+                   <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 bg-black border border-white/10 px-2 py-1 text-[8px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-50">PURGE_HISTORY</span>
+                </button>
+                <div className={`w-1.5 h-1.5 rounded-full ${isFetchingBalances ? 'bg-yellow-500 animate-pulse' : 'bg-[#c8ff00]'} `} />
              </div>
           </div>
       </div>
 
-      {/* Terminal Output */}
+      {/* Terminal Output — Fix 1, 2, 9 */}
       <div 
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-hide"
+        className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide bg-[rgba(14,16,22,0.6)]"
       >
-        <div className="text-white/20 text-[10px] leading-relaxed mb-8 uppercase">
-          Welcome to StarkAgent. Initializing Gemini Cognitive Bridge...<br />
-          Ready for natural language instruction. Supported protocols: Send, Swap, Stake (Native), Lend.<br />
-          // WARNING: Always verify sensitive transaction payloads before final signature.
+        {/* BOOT_SEQUENCE_MESSAGES */}
+        <div className="space-y-1">
+          {bootSequence > 0 && <p className="text-[#c8ff00] text-[10px] tracking-widest opacity-80 animate-agent-in">WARN: KERNEL_INTEGRITY_CHECK_PASSED [OK]</p>}
+          {bootSequence > 1 && <p className="text-orange-400 text-[10px] tracking-widest opacity-80 animate-agent-in">WARN: NON_CUSTODIAL_MODE_ACTIVE // USER_RETAINS_KEYS</p>}
+          {bootSequence > 2 && <p className="text-white/20 text-[10px] tracking-widest animate-agent-in">INIT: NEURAL_BRIDGE_GEMINI_V1.5_PRO... STABLE</p>}
+          {bootSequence > 3 && <p className="text-white/10 text-[10px] tracking-widest animate-agent-in">------------------------------------------------------------</p>}
         </div>
 
-        {history.map((msg, i) => (
-          <div key={i} className="space-y-3">
-            <div className={`flex gap-4 ${msg.type === 'user' ? 'opacity-80' : ''}`}>
-               <div className={`mt-1 font-bold ${msg.type === 'user' ? 'text-white' : msg.type === 'error' ? 'text-red-500' : 'text-[#0af0ff]'}`}>
-                  {msg.type === 'user' ? '>' : msg.type === 'error' ? '!' : '#'}
-               </div>
-               <div className={`text-sm tracking-tighter ${msg.type === 'error' ? 'text-red-400 bg-red-500/5 px-2' : 'text-white/80'}`}>
-                  {msg.content}
-               </div>
+        {history.map((msg, i) => {
+          const isSuccessCard = msg.content.includes("TX_BROADCAST_SUCCESS") || msg.content.includes("Transaction Successful");
+          const isInfo = msg.content.includes("QUERY_INIT") || msg.content.includes("FORENSICS_INIT") || msg.content.includes("ANALYZING");
+
+          return (
+          <div key={i} className={`flex flex-col mb-2 ${msg.type === 'user' ? 'items-end' : 'items-start'}`}>
+            {/* Message Header (Fix 2) */}
+            <div className={`text-[9px] font-bold tracking-[3px] mb-1.5 uppercase opacity-40 flex items-center gap-2 ${msg.type === 'user' ? 'flex-row-reverse' : ''}`}>
+               {msg.type === 'user' ? 'YOU' : msg.type === 'error' ? 'ERROR' : 'AGENT'}
+               <span className={`w-1 h-1 rounded-full ${msg.type === 'user' ? 'bg-[#0af0ff]' : msg.type === 'error' ? 'bg-red-500' : 'bg-[#7b2fff]'}`} />
             </div>
-            
-            {/* INJECT_QUICK_OPTIONS: Detect selection hints and render buttons */}
-            {msg.type === 'agent' && (msg.content.includes("Select:") || msg.content.includes("Choose")) && (
-              <div className="flex flex-wrap gap-2 ml-8 pb-2">
-                {["STRK", "ETH", "USDC"].map(token => msg.content.includes(token) && (
-                  <button 
-                    key={token}
-                    onClick={() => { setInput(token); handleSubmit({ preventDefault: () => {} } as any); }}
-                    className="truncate px-3 py-1 bg-white/5 border border-white/10 text-[10px] text-[#0af0ff] hover:bg-[#0af0ff]/10 hover:border-[#0af0ff]/30 transition-all uppercase tracking-widest"
-                  >
-                    {token}
-                  </button>
-                ))}
-                {["Twinstake", "Avnu", "Braavos"].map(val => msg.content.includes(val) && (
-                  <button 
-                    key={val}
-                    onClick={() => { setInput(val); handleSubmit({ preventDefault: () => {} } as any); }}
-                    className="truncate px-3 py-1 bg-white/5 border border-white/10 text-[10px] text-[#c8ff00] hover:bg-[#c8ff00]/10 hover:border-[#c8ff00]/30 transition-all uppercase tracking-widest"
-                  >
-                    {val}
-                  </button>
-                ))}
-              </div>
-            )}
+
+            {/* Message Bubble (Fix 1, 2) */}
+            <div className={`relative max-w-[85%] group`}>
+               {isSuccessCard ? (
+                 <SuccessCard content={msg.content} />
+               ) : (
+                 <div className={`p-4 rounded-sm text-sm tracking-tight leading-relaxed animate-agent-in ${
+                   msg.type === 'user' 
+                    ? 'bg-[rgba(0,229,255,0.05)] border-r-[2px] border-r-[rgba(0,229,255,0.4)] rounded-l-lg text-[#e2e8f0]' 
+                    : msg.type === 'error'
+                      ? 'bg-red-500/10 border-l-[2px] border-l-red-500 rounded-r-lg text-red-100 font-bold'
+                      : isInfo
+                        ? 'text-white/30 italic font-mono text-xs'
+                        : 'bg-[rgba(123,47,255,0.05)] border-l-[2px] border-l-[rgba(123,47,255,0.35)] rounded-r-lg text-[#00e5ff]'
+                 }`}>
+                    {/* Content Parser (Fix 3, 5) */}
+                    {msg.content.split('\n').map((line, lineIdx) => {
+                      // Process Address detection
+                      const addrRegex = /0x[a-fA-F0-9]{60,66}/g;
+                      const parts = line.split(addrRegex);
+                      const matches = line.match(addrRegex);
+                      
+                      if (matches) {
+                        return (
+                          <p key={lineIdx}>
+                            {parts.map((part, pIdx) => (
+                              <React.Fragment key={pIdx}>
+                                {part}
+                                {matches[pIdx] && <AddressPill address={matches[pIdx]} />}
+                              </React.Fragment>
+                            ))}
+                          </p>
+                        );
+                      }
+                      return <p key={lineIdx} className={lineIdx > 0 ? "mt-2" : ""}>{line}</p>;
+                    })}
+
+                    {/* Token Selector (Fix 4) */}
+                    {msg.type === 'agent' && (msg.content.includes("Select:") || msg.content.includes("Choose")) && (
+                      <div className="flex flex-wrap gap-3 mt-4 animate-agent-in [animation-delay:0.3s]">
+                        {[
+                          { token: "STRK", color: "bg-[#7b2fff]/20 border-[#7b2fff]/40 text-[#7b2fff]", val: balances.STRK },
+                          { token: "ETH", color: "bg-[#627eea]/20 border-[#627eea]/40 text-[#627eea]", val: balances.ETH },
+                          { token: "USDC", color: "bg-[#2775ca]/20 border-[#2775ca]/40 text-[#2775ca]", val: balances.USDC }
+                        ].map(t => msg.content.includes(t.token) && (
+                          <button 
+                            key={t.token}
+                            onClick={() => { setInput(t.token); handleSubmit({ preventDefault: () => {} } as any); }}
+                            className={`flex flex-col items-center gap-1.5 px-6 py-2 border rounded-md transition-all hover:scale-105 active:scale-95 ${t.color}`}
+                          >
+                            <span className="font-bebas text-lg tracking-widest">{t.token}</span>
+                            <span className="text-[8px] font-mono opacity-60">BAL: {t.val}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                 </div>
+               )}
+            </div>
           </div>
-        ))}
+        );
+        })}
 
         {isParsing && (
-          <div className="flex items-center gap-4 animate-pulse">
-             <div className="text-[#0af0ff] font-bold">#</div>
-             <div className="text-sm text-[#0af0ff]/60 tracking-widest uppercase">ANALYZING_VIA_STARKAGENT_BRAIN...</div>
+          <div className="flex items-center gap-3 animate-pulse py-4 ml-2">
+             <div className="w-1.5 h-1.5 rounded-full bg-[#0af0ff]" />
+             <div className="text-[10px] text-[#0af0ff] font-bold tracking-[4px] uppercase">COGNITIVE_ENGINE_THINKING...</div>
           </div>
         )}
 
-        {/* Confirmation Card (Inline & Compact) */}
+        {/* Intent Confirmation — Refactored */}
         {parsedIntent && (
-          <div className="ml-8 mt-4 max-w-[420px] animate-anti-gravity">
-             <div className="bg-[#1a1d28]/80 backdrop-blur-md border border-[#0af0ff]/20 p-4 rounded-sm shadow-[0_0_30px_rgba(10,240,255,0.05)]">
-                <div className="flex justify-between items-center mb-3 border-b border-white/5 pb-2">
-                   <div className="flex items-center gap-2">
-                      <ShieldCheck className="w-3 h-3 text-[#0af0ff]" />
-                      <span className="text-[10px] font-bebas tracking-[2px] text-[#0af0ff] uppercase">INTENT_CONFIRMATION</span>
+          <div className="mt-8 animate-agent-in grid place-items-center">
+             <div className="w-full max-w-[480px] bg-[#1a1d28]/90 backdrop-blur-xl border-x-2 border-y border-white/10 rounded-lg shadow-2xl p-6 relative group overflow-hidden">
+                <div className="absolute top-0 right-0 p-2 text-white/5 font-bebas text-4xl select-none leading-none">SIGN_TX</div>
+                
+                <div className="flex justify-between items-center mb-6 relative z-10">
+                   <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-[#0af0ff]/10 flex items-center justify-center border border-[#0af0ff]/30">
+                        <ShieldCheck className="w-4 h-4 text-[#0af0ff]" />
+                      </div>
+                      <h4 className="font-bebas text-xl text-white tracking-[2px] uppercase">Review Operation</h4>
                    </div>
-                   <button onClick={() => resetGuidedFlow("COMMAND_ABORTED: Execution sequence terminated.")} className="text-white/20 hover:text-white"><X className="w-3 h-3" /></button>
+                   <button onClick={() => resetGuidedFlow("COMMAND_ABORTED: Handshake cancelled.")} className="text-white/20 hover:text-white transition-colors">
+                     <X className="w-4 h-4" />
+                   </button>
                 </div>
 
-                <div className="space-y-3 mb-4">
-                   <div className="flex justify-between items-end">
+                <div className="space-y-4 mb-8">
+                   <div className="flex justify-between items-end bg-white/5 p-4 rounded-sm border border-white/5">
                       <div>
-                         <p className="text-[8px] text-white/30 uppercase tracking-widest mb-0.5">OP_TYPE</p>
-                         <p className="font-bebas text-lg text-white tracking-widest">{(parsedIntent?.action || "UNKNOWN").toUpperCase()}</p>
+                         <p className="text-[9px] text-[#0af0ff] uppercase tracking-widest font-bold mb-1">OPERATION_REASON</p>
+                         <p className="font-bebas text-2xl text-white tracking-widest">{(parsedIntent?.action || "UNKNOWN").replace('_', ' ')}</p>
                       </div>
                       <div className="text-right">
-                         <p className="text-[8px] text-white/30 uppercase tracking-widest mb-0.5">ASSET_VALUE</p>
-                         <p className="text-sm font-mono text-[#c8ff00] font-bold">
+                         <p className="text-[9px] text-[#c8ff00] uppercase tracking-widest font-bold mb-1">PAYLOAD_VALUE</p>
+                         <p className="text-xl font-mono text-[#c8ff00] font-bold">
                            {parsedIntent?.amount} {parsedIntent?.token || parsedIntent?.fromToken}
-                           {parsedIntent?.toToken && <span className="text-[#0af0ff] mx-1">→</span>}
+                           {parsedIntent?.toToken && <span className="text-white/20 mx-2">→</span>}
                            {parsedIntent?.toToken && parsedIntent.toToken}
                          </p>
                       </div>
                    </div>
 
-                   <div className="bg-black/40 p-3 border border-white/5 rounded-sm">
-                      <p className="text-[8px] text-[#c8ff00] uppercase tracking-widest mb-2 font-bold flex items-center gap-1.5">
-                         <TrendingUp className="w-2.5 h-2.5" /> PREVIEW_INSIGHTS
-                      </p>
-                      <div className="space-y-1.5">
-                         {parsedIntent?.action === 'swap' && (
-                           <div className="flex justify-between text-[10px] font-mono">
-                                <span className="text-white/30 uppercase">EST_RECEIVE:</span>
-                                <span className="text-white">~{parsedIntent.expectedOutput} {parsedIntent.toToken}</span>
-                           </div>
-                         )}
-                         {parsedIntent?.action === 'lend' && (
-                           <div className="flex justify-between text-[10px] font-mono">
-                                <span className="text-white/30 uppercase">VESU_APR:</span>
-                                <span className="text-[#c8ff00]">{parsedIntent.apr}%</span>
-                           </div>
-                         )}
-                         {parsedIntent?.action === 'stake' && (
-                           <div className="flex justify-between text-[10px] font-mono">
-                                <span className="text-white/30 uppercase">STAKING_APR:</span>
-                                <span className="text-[#c8ff00]">~{parsedIntent.apr?.toFixed(2)}%</span>
-                           </div>
-                         )}
-                         <div className="flex justify-between text-[10px] font-mono">
-                            <span className="text-white/30 uppercase">EST_FEE:</span>
-                            <span className="text-white/40">~0.0002 ETH</span>
-                         </div>
-                      </div>
+                   <div className="grid grid-cols-2 gap-3 text-[10px] font-mono">
+                      {[
+                        { label: 'NETWORK', val: 'STARKNET_MAINNET', color: 'text-white' },
+                        { label: 'EST_GAS', val: '~0.00021 ETH', color: 'text-white/60' },
+                        { label: 'SLIPPAGE', val: '0.5% (STRICT)', color: 'text-white/60' },
+                        { label: 'PRIORITY', val: 'HIGH_NEURAL', color: 'text-indigo-400' }
+                      ].map(item => (
+                        <div key={item.label} className="bg-black/40 p-2 border border-white/5 rounded-sm flex justify-between">
+                           <span className="text-white/20">{item.label}:</span>
+                           <span className={item.color}>{item.val}</span>
+                        </div>
+                      ))}
                    </div>
                 </div>
 
-                <div className="flex gap-2">
-                   <button 
-                     onClick={handleExecute}
-                     disabled={isExecuting || !address}
-                     className="flex-1 h-9 bg-[#0af0ff] text-black font-bebas text-sm tracking-[2px] hover:bg-white transition-all active:scale-95 disabled:opacity-20 flex items-center justify-center gap-2"
-                   >
-                      {isExecuting ? <RefreshCw className="w-4 h-4 animate-spin" /> : "EXECUTE"} 
-                      {!isExecuting && <CpuIcon className="w-3.5 h-3.5" />}
-                   </button>
-                   
-                   {!isExecuting && (
-                     <button 
-                       onClick={() => resetGuidedFlow("COMMAND_ABORTED: State cleared. How can I assist you further?")}
-                       className="flex-1 h-9 bg-white/5 border border-white/20 text-white/40 font-bebas text-sm tracking-[2px] hover:text-white hover:border-white/40 transition-all uppercase"
-                     >
-                       CANCEL
-                     </button>
-                   )}
-
-                   {!address && !isExecuting && (
-                     <button 
-                      onClick={connectWallet}
-                      className="flex-1 h-9 border border-[#c8ff00] text-[#c8ff00] font-bebas text-sm tracking-[2px] hover:bg-[#c8ff00]/10"
-                     >
-                       CONNECT
-                     </button>
-                   )}
-                </div>
+                <button 
+                  onClick={handleExecute}
+                  disabled={isExecuting || !address}
+                  className="w-full h-14 bg-[#c8ff00] animate-glitch-pulse text-black font-bebas text-2xl tracking-[6px] hover:bg-white transition-all active:scale-95 disabled:opacity-20 flex items-center justify-center gap-4 relative overflow-hidden"
+                >
+                   {isExecuting ? <RefreshCw className="w-6 h-6 animate-spin" /> : "EXECUTE_SIGNATURE"} 
+                   {!isExecuting && <CpuIcon className="w-5 h-5" />}
+                </button>
              </div>
           </div>
         )}
       </div>
 
-      {/* Input Module */}
-      <form onSubmit={handleSubmit} className="p-6 bg-[#0E1016] border-t border-white/10 shrink-0">
-          <div className="relative group">
-            <div className={`absolute -left-1 -top-1 -right-1 -bottom-1 bg-[#0af0ff]/20 blur-xl transition-opacity ${isParsing ? 'opacity-100' : 'opacity-0'}`} />
-            <div className="relative flex items-center bg-black border-2 border-white/10 group-focus-within:border-[#0af0ff]/50 transition-all">
-              <div className="px-6 text-white/20 font-bold border-r border-white/10 h-16 flex items-center">
-                 <span className={isExecuting ? 'animate-pulse' : ''}>&gt;</span>
+      {/* Input Module — Fix 8, 10 */}
+      <div className="p-6 bg-[#0E1016]/80 border-t-2 border-white/10 shrink-0 backdrop-blur-md">
+           {/* Categorized Quick Chips — Fix 8 */}
+           {!guidedConfig && (
+            <div className="flex flex-wrap gap-4 mb-6 px-1">
+               <div className="flex items-center gap-2">
+                  <span className="text-[8px] text-[#0af0ff]/60 uppercase tracking-widest font-bold">Transfer</span>
+                  <div className="flex gap-2">
+                    <button onClick={() => setInput("send")} className="text-[9px] font-bold text-[#e2e8f0]/40 hover:text-[#0af0ff] transition-colors uppercase tracking-[2px] border border-white/5 hover:border-[#0af0ff]/30 px-3 py-1 bg-white/5">#Send</button>
+                    <button onClick={() => setInput("swap")} className="text-[9px] font-bold text-[#e2e8f0]/40 hover:text-[#0af0ff] transition-colors uppercase tracking-[2px] border border-white/5 hover:border-[#0af0ff]/30 px-3 py-1 bg-white/5">#Swap</button>
+                  </div>
+               </div>
+               
+               <div className="w-[1px] h-4 bg-white/10 self-center" />
+
+               <div className="flex items-center gap-2">
+                  <span className="text-[8px] text-purple-400/60 uppercase tracking-widest font-bold">Yield</span>
+                  <div className="flex gap-2">
+                    <button onClick={() => setInput("lend")} className="text-[9px] font-bold text-[#e2e8f0]/40 hover:text-purple-400 transition-colors uppercase tracking-[2px] border border-white/5 hover:border-purple-400/30 px-3 py-1 bg-white/5">#Lend</button>
+                    <button onClick={() => setInput("stake")} className="text-[9px] font-bold text-[#e2e8f0]/40 hover:text-purple-400 transition-colors uppercase tracking-[2px] border border-white/5 hover:border-purple-400/30 px-3 py-1 bg-white/5">#Stake</button>
+                    <button onClick={() => setInput("withdraw")} className="text-[9px] font-bold text-[#e2e8f0]/40 hover:text-purple-400 transition-colors uppercase tracking-[2px] border border-white/5 hover:border-purple-400/30 px-3 py-1 bg-white/5">#Withdraw</button>
+                  </div>
+               </div>
+
+               <div className="w-[1px] h-4 bg-white/10 self-center" />
+               
+               <div className="flex items-center gap-2">
+                  <button onClick={() => setInput("balance")} className="text-[9px] font-bold text-white/30 hover:text-white transition-colors uppercase tracking-[2px] border border-dashed border-white/10 px-3 py-1">#Check_Portfolio</button>
+               </div>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="relative group">
+            <div className={`absolute -left-1 -top-1 -right-1 -bottom-1 bg-[#0af0ff]/10 blur-xl transition-opacity ${isParsing || isExecuting ? 'opacity-100' : 'opacity-0'}`} />
+            <div className="relative flex items-center bg-black border-2 border-white/10 focus-within:border-[#0af0ff]/40 transition-all shadow-2xl">
+              <div className="px-6 text-[#0af0ff]/40 font-bold border-r border-white/10 h-16 flex items-center">
+                 <span className={`${isExecuting || isParsing ? 'animate-pulse text-[#0af0ff]' : ''}`}>&gt;</span>
               </div>
               <input 
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder={isParsing ? "PROCESSING..." : "INSTRUCT AGENT (e.g. 'swap 1 strk to usdc')"}
+                placeholder={isParsing ? "THINKING..." : "ENTER_NEURAL_COMMAND"}
                 disabled={isParsing || isExecuting}
-                className="flex-1 bg-transparent h-16 px-6 text-white placeholder:text-white/10 focus:outline-none tracking-tight text-lg"
+                className="flex-1 bg-transparent h-16 px-6 text-white placeholder:text-white/10 focus:outline-none tracking-[2px] text-lg font-bebas"
+                autoFocus
               />
               <button 
                 type="submit"
                 disabled={!input.trim() || isParsing || isExecuting}
-                className="h-16 px-8 text-[#0af0ff]/40 hover:text-[#0af0ff] transition-colors disabled:opacity-20"
+                className="h-16 px-8 text-[#0af0ff]/40 hover:text-[#0af0ff] transition-colors disabled:opacity-20 group"
               >
-                 <Send className="w-6 h-6" />
+                 <Send className={`w-6 h-6 ${!input.trim() ? '' : 'group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform'}`} />
               </button>
             </div>
-          </div>
+          </form>
+
           <div className="flex justify-between mt-4">
-             <div className="flex items-center gap-4">
-                <span className="text-[8px] text-white/20 uppercase tracking-widest">STARKAGENT_V1_CORE</span>
-                <span className="text-[8px] text-white/10">//</span>
-                <span className="text-[8px] text-white/20 uppercase tracking-widest">LATENCY: 420ms</span>
+             <div className="flex items-center gap-6">
+                <div className="flex flex-col">
+                  <span className="text-[7px] text-white/10 uppercase tracking-[4px]">Core_Kernel</span>
+                  <span className="text-[8px] text-[#0af0ff]/40 uppercase tracking-[2px] font-bold">STARKAGENT_V1.1_STABLE</span>
+                </div>
+                <div className="flex flex-col border-l border-white/10 pl-6">
+                  <span className="text-[7px] text-white/10 uppercase tracking-[4px]">Neural_Link</span>
+                  <span className="text-[8px] text-white/20 uppercase tracking-[20px] font-bold animate-pulse">●●●●</span>
+                </div>
                 {guidedConfig && (
                    <button 
                     type="button" 
-                    onClick={() => resetGuidedFlow("GUIDED_SESSION_TERMINATED: Returning to general assistance.")}
-                    className="flex items-center gap-2 px-2 py-0.5 bg-red-500/10 border border-red-500/20 text-[8px] text-red-400 uppercase tracking-widest hover:bg-red-500/20 transition-all"
+                    onClick={() => resetGuidedFlow("GUIDED_SESSION_TERMINATED: State purged.")}
+                    className="flex items-center gap-2 px-3 py-1 bg-red-500/10 border border-red-500/20 text-[9px] text-red-400 uppercase tracking-widest hover:bg-red-500/20 transition-all font-bold"
                    >
-                     <X className="w-2 h-2" /> CANCEL_SESSION
+                     <X className="w-3 h-3" /> ABORT_HANDSHAKE
                    </button>
                 )}
              </div>
+             
+             <div className="flex items-center gap-4 opacity-20 hover:opacity-100 transition-opacity">
+                <span className="text-[8px] text-white/40 font-mono">0x{address?.slice(-8)}</span>
+                <div className="w-1.5 h-1.5 rounded-full bg-[#c8ff00] animate-pulse" />
+             </div>
           </div>
-          {!guidedConfig && (
-            <div className="flex flex-wrap gap-2 px-4 py-3 border-t border-white/5 bg-black/20">
-               <button onClick={() => setInput("send")} className="text-[9px] font-unbounded text-[#c8ff00]/60 hover:text-[#c8ff00] transition-colors uppercase tracking-widest border border-[#c8ff00]/10 px-2 py-1 bg-[#c8ff00]/5 hover:bg-[#c8ff00]/10">#Start_Send</button>
-               <button onClick={() => setInput("swap")} className="text-[9px] font-unbounded text-[#0af0ff]/60 hover:text-[#0af0ff] transition-colors uppercase tracking-widest border border-[#0af0ff]/10 px-2 py-1 bg-[#0af0ff]/5 hover:bg-[#0af0ff]/10">#Start_Swap</button>
-               <button onClick={() => setInput("lend")} className="text-[9px] font-unbounded text-purple-400/60 hover:text-purple-400 transition-colors uppercase tracking-widest border border-purple-400/10 px-2 py-1 bg-purple-400/5 hover:bg-purple-400/10">#Start_Lend</button>
-               <button onClick={() => setInput("stake")} className="text-[9px] font-unbounded text-orange-400/60 hover:text-orange-400 transition-colors uppercase tracking-widest border border-orange-400/10 px-2 py-1 bg-orange-400/5 hover:bg-orange-400/10">#Start_Stake</button>
-               <button onClick={() => setInput("withdraw")} className="text-[9px] font-unbounded text-pink-400/60 hover:text-pink-400 transition-colors uppercase tracking-widest border border-pink-400/10 px-2 py-1 bg-pink-400/5 hover:bg-pink-400/10">#Withdraw_Lend</button>
-               <button onClick={() => setInput("claim")} className="text-[9px] font-unbounded text-yellow-400/60 hover:text-yellow-400 transition-colors uppercase tracking-widest border border-yellow-400/10 px-2 py-1 bg-yellow-400/5 hover:bg-yellow-400/10">#Claim_Rewards</button>
-               <button onClick={() => setInput("balance")} className="text-[9px] font-unbounded text-white/40 hover:text-white transition-colors uppercase tracking-widest border border-white/10 px-2 py-1 bg-white/5 hover:bg-white/10">#Check_Portfolio</button>
-            </div>
-          )}
-      </form>
+      </div>
     </div>
   );
 }

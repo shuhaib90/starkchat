@@ -332,6 +332,16 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
         });
         return { ...tx, wait: () => sdkInstance.getProvider().waitForTransaction(tx.hash) };
       },
+      execute: async (calls: any[], options?: any) => {
+        const res = await normalizedAccount.execute(calls, options);
+        // UNIFIED_TX_TRACKING: Capture hash and attach wait helper using the SDK provider
+        const hash = res.transaction_hash || res.hash;
+        return { 
+          ...res, 
+          hash, 
+          wait: () => sdkInstance.getProvider().waitForTransaction(hash) 
+        };
+      },
       _sdkProvider: sdkInstance.getProvider().nodeUrl
     });
     return bridge;
