@@ -205,6 +205,12 @@ export function LandingPage({ onEnter }: { onEnter?: () => void }) {
                 <Coins className="w-5 h-5" /> STAKE
               </button>
             </Link>
+
+            <Link href="/shield">
+              <button className="px-6 py-5 bg-indigo-500/5 border-2 border-indigo-500/20 text-indigo-400 font-bebas text-xl tracking-[2px] shadow-[6px_6px_0px_#06070a] hover:bg-indigo-500/10 hover:border-indigo-400 hover:-translate-x-1 hover:-translate-y-1 transition-all flex items-center gap-3">
+                <ShieldCheck className="w-5 h-5" /> SHIELD
+              </button>
+            </Link>
           </div>
         </div>
       </header>
