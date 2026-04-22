@@ -479,7 +479,6 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
         <NetworkDiagnostic 
           message={diagnostic.message} 
           type={diagnostic.type as any} 
-          onRotate={rotateRpc}
           onClose={() => setDiagnostic(prev => ({ ...prev, isOpen: false }))}
         />
       )}
