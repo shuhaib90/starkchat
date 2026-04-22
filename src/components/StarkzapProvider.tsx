@@ -17,7 +17,6 @@ import {
 import { connect, disconnect } from "starknetkit";
 import { normalizeAddress } from "@/lib/address";
 import { NetworkDiagnostic } from "./NetworkDiagnostic";
-import { WalletModal } from "./WalletModal";
 
 // The STRK token address on starknet mainnet
 export const STRK_TOKEN_ADDRESS = "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d";
@@ -59,7 +58,6 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
   const [address, setAddress] = useState<string | null>(null);
   const [connectorId, setConnectorId] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeRpc, setActiveRpc] = useState(PRIVATE_RPC || FALLBACK_RPCS[0]);
   const [rpcIndex, setRpcIndex] = useState(0);
   
@@ -380,10 +378,6 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const connectWallet = useCallback(async () => {
-    setIsModalOpen(true);
-  }, []);
-
-  const handleWalletSelect = useCallback(async (walletId: string) => {
     if (!sdk) return;
     try {
       setIsConnecting(true);
@@ -391,17 +385,15 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
       const { InjectedConnector } = await import("starknetkit/injected");
 
       const connectors = [
-        new InjectedConnector({ options: { id: "argentX", name: "Ready Wallet (formerly Argent)" } }),
+        new InjectedConnector({ options: { id: "argentX", name: "Argent X" } }),
         new InjectedConnector({ options: { id: "braavos", name: "Braavos" } }),
         new InjectedConnector({ options: { id: "okxwallet", name: "OKX Wallet" } })
       ];
 
-      const selectedConnector = connectors.find(c => c.id === walletId);
-      if (!selectedConnector) return;
-
       const result = await connect({
-        modalMode: "neverAsk", // Bypass Library UI
-        connectors: [selectedConnector]
+        modalMode: "alwaysAsk",
+        modalTheme: "dark",
+        connectors
       }) as any;
       
       const rawWallet = result.wallet as any;
@@ -439,7 +431,6 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
         }
         
         setConnectorId(result.connector.id);
-        setIsModalOpen(false); // Close modal on success
       }
     } catch (error) {
       console.error("Failed to connect wallet:", error);
@@ -483,14 +474,6 @@ export function StarkzapProvider({ children }: { children: React.ReactNode }) {
   return (
     <WalletContext.Provider value={value}>
       {children}
-      {/* Custom Wallet Connection Flow */}
-      <WalletModal 
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSelect={handleWalletSelect}
-        isConnecting={isConnecting}
-      />
-
       {/* Visual Diagnostic Overlay */}
       {diagnostic.isOpen && (
         <NetworkDiagnostic 
