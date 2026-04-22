@@ -14,8 +14,10 @@ import {
   ExternalLink,
   ChevronRight,
   Fingerprint,
-  Zap
+  Zap,
+  LogOut
 } from "lucide-react";
+import Link from "next/link";
 import { useWallet } from "@/components/StarkzapProvider";
 import { TongoConfidential, Amount } from "starkzap";
 import { RpcProvider, uint256 } from "starknet";
@@ -173,10 +175,21 @@ export function ConfidentialDashboard({ tongoKey, onLock }: ConfidentialDashboar
       <nav className="relative z-10 border-b border-white/5 bg-[#06070a]/80 backdrop-blur-md px-8 py-6">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-6">
-            <div className="relative group">
-               <div className="absolute -inset-2 bg-indigo-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-               <Shield className="relative w-8 h-8 text-indigo-400" />
+            <div className="flex items-center gap-4">
+              <Link 
+                href="/"
+                className="p-2 text-white/20 hover:text-white hover:bg-white/5 rounded-sm transition-all group/exit"
+                title="Exit to Terminal"
+              >
+                <LogOut className="w-5 h-5 group-hover/exit:-translate-x-1 transition-transform" />
+              </Link>
+              <div className="h-8 w-[1px] bg-white/10" />
+              <div className="relative group">
+                 <div className="absolute -inset-2 bg-indigo-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                 <Shield className="relative w-8 h-8 text-indigo-400" />
+              </div>
             </div>
+            
             <div className="h-8 w-[1px] bg-white/10" />
             <div>
               <h1 className="font-bebas text-3xl tracking-[4px] leading-none mb-1 text-white">STARK_SHIELD_v1.0</h1>

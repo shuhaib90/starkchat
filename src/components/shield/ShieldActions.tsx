@@ -220,17 +220,25 @@ export function ShieldActions({ type, confidential, asset, balance, onClose, onS
                    </p>
                 </div>
 
-                <button 
-                  onClick={handleAction}
-                  disabled={!amount || (type !== "fund" && !recipientId)}
-                  className={`w-full h-16 rounded-xl font-bebas text-xl tracking-[4px] transition-all flex items-center justify-center gap-4 ${
-                    type === "fund" ? "bg-[#c8ff00] text-black" : 
-                    type === "transfer" ? "bg-indigo-500 text-white" : 
-                    "bg-cyan-500 text-white"
-                  } disabled:opacity-30`}
-                >
-                  Confirm {type.toUpperCase()}
-                </button>
+                <div className="flex gap-4">
+                  <button 
+                    onClick={onClose}
+                    className="flex-1 h-16 rounded-xl font-bebas text-xl tracking-[4px] bg-white/5 border border-white/10 text-white/40 hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20 transition-all"
+                  >
+                    CANCEL
+                  </button>
+                  <button 
+                    onClick={handleAction}
+                    disabled={!amount || (type !== "fund" && !recipientId)}
+                    className={`flex-[2] h-16 rounded-xl font-bebas text-xl tracking-[4px] transition-all flex items-center justify-center gap-4 ${
+                      type === "fund" ? "bg-[#c8ff00] text-black" : 
+                      type === "transfer" ? "bg-indigo-500 text-white" : 
+                      "bg-cyan-500 text-white"
+                    } disabled:opacity-30`}
+                  >
+                    Confirm {type.toUpperCase()}
+                  </button>
+                </div>
              </div>
            )}
 
